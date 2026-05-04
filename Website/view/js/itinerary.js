@@ -5,6 +5,174 @@
   const { escapeHtml, openModal, toast } = global.UI;
   const { generateId, getTrip } = global.Storage;
 
+  // --- Weather (activity-card only; async; cached) ---
+  const __weatherCache = new Map(); // locationKey -> Promise<{ tempC:number, condition:string, emoji:string }|null>
+  const __geoCache = new Map(); // locationKey -> Promise<{ lat:number, lon:number }|null>
+  const __DEFAULT_COORDS = { lat: 30.0444, lon: 31.2357 }; // Cairo (safe fallback)
+
+  function __weatherKey(location) {
+    return String(location || "").trim().toLowerCase();
+  }
+
+  function __weatherFromCode(code) {
+    // Open-Meteo weathercode mapping (subset grouped)
+    if (code === 0) return { condition: "Clear", emoji: "☀️" };
+    if (code === 1 || code === 2) return { condition: "Partly cloudy", emoji: "⛅" };
+    if (code === 3) return { condition: "Cloudy", emoji: "☁️" };
+    if (code === 45 || code === 48) return { condition: "Fog", emoji: "🌫️" };
+    if ((code >= 51 && code <= 57) || (code >= 61 && code <= 67) || (code >= 80 && code <= 82))
+      return { condition: "Rain", emoji: "🌧️" };
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86))
+      return { condition: "Snow", emoji: "🌨️" };
+    if (code >= 95 && code <= 99) return { condition: "Thunderstorm", emoji: "⛈️" };
+    return { condition: "Weather", emoji: "☁️" };
+  }
+
+  async function __geocode(location) {
+    const key = __weatherKey(location);
+    if (!key) return null;
+    if (__geoCache.has(key)) return __geoCache.get(key);
+
+    const p = (async () => {
+      const parseLatLon = (latRaw, lonRaw) => {
+        const lat = parseFloat(latRaw);
+        const lon = parseFloat(lonRaw);
+        if (!isFinite(lat) || !isFinite(lon)) return null;
+        return { lat, lon };
+      };
+
+      // Primary: OpenStreetMap Nominatim
+      try {
+        const url =
+          "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" +
+          encodeURIComponent(location);
+        const res = await fetch(url, {
+          headers: { Accept: "application/json", "Accept-Language": "en" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const first = Array.isArray(data) ? data[0] : null;
+          const coords = first ? parseLatLon(first.lat, first.lon) : null;
+          if (coords) return coords;
+        }
+      } catch {
+        // continue to fallback
+      }
+
+      // Fallback: Open-Meteo geocoding (often more reliable with CORS)
+      try {
+        const url =
+          "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=" +
+          encodeURIComponent(location);
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+          const data = await res.json();
+          const first = data && Array.isArray(data.results) ? data.results[0] : null;
+          const coords = first ? parseLatLon(first.latitude, first.longitude) : null;
+          if (coords) return coords;
+        }
+      } catch {
+        // continue to default
+      }
+
+      // Safe last resort: default coordinates
+      return { lat: __DEFAULT_COORDS.lat, lon: __DEFAULT_COORDS.lon };
+    })();
+
+    __geoCache.set(key, p);
+    return p;
+  }
+
+  async function getWeather(location) {
+    const key = __weatherKey(location);
+    if (!key) return null;
+    if (__weatherCache.has(key)) return __weatherCache.get(key);
+
+    const p = (async () => {
+      const geo =
+        (await __geocode(location)) || { lat: __DEFAULT_COORDS.lat, lon: __DEFAULT_COORDS.lon };
+
+      try {
+        const url =
+          "https://api.open-meteo.com/v1/forecast?latitude=" +
+          encodeURIComponent(String(geo.lat)) +
+          "&longitude=" +
+          encodeURIComponent(String(geo.lon)) +
+          "&current_weather=true";
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!res.ok) return { tempC: null, condition: "Unavailable", emoji: "☁️", unavailable: true };
+        const data = await res.json();
+        const cw = data && data.current_weather ? data.current_weather : null;
+        const tempC = cw && typeof cw.temperature === "number" ? cw.temperature : null;
+        const code = cw && typeof cw.weathercode === "number" ? cw.weathercode : null;
+        if (tempC == null || code == null)
+          return { tempC: null, condition: "Unavailable", emoji: "☁️", unavailable: true };
+        const mapped = __weatherFromCode(code);
+        return { tempC, condition: mapped.condition, emoji: mapped.emoji };
+      } catch {
+        return { tempC: null, condition: "Unavailable", emoji: "☁️", unavailable: true };
+      }
+    })();
+
+    __weatherCache.set(key, p);
+    return p;
+  }
+
+  function __attachWeatherToCard(cardEl, location) {
+    const loc = String(location || "").trim();
+    if (!loc) return;
+    if (cardEl.dataset.weatherAttached === "1") return;
+    cardEl.dataset.weatherAttached = "1";
+
+    const meta = cardEl.querySelector(".activity-card__meta");
+    const line = document.createElement("div");
+    line.className = "activity-card__meta";
+    line.dataset.weatherLine = "1";
+    line.textContent = "Loading weather...";
+
+    if (meta && meta.parentNode) meta.insertAdjacentElement("afterend", line);
+    else cardEl.appendChild(line);
+
+    getWeather(loc)
+      .then((w) => {
+        if (!line.isConnected) return;
+        if (!w || w.unavailable || typeof w.tempC !== "number" || !isFinite(w.tempC)) {
+          line.textContent = "Weather unavailable";
+          return;
+        }
+        line.textContent = w.emoji + " " + Math.round(w.tempC) + "°C · " + w.condition;
+
+        const isOutdoor = String(cardEl.dataset.activityType || "").toLowerCase() === "outdoor";
+        if (!isOutdoor) return;
+
+        const cond = String(w.condition || "").toLowerCase();
+        const isRain = cond.includes("rain");
+        const isSnow = cond.includes("snow");
+        const isThunder = cond.includes("thunder");
+        const isCold = w.tempC < 10;
+        const isHot = w.tempC > 38;
+        const isBad = isRain || isSnow || isThunder || isCold || isHot;
+        if (!isBad) return;
+
+        const existing = cardEl.querySelector(".activity-card__warning");
+        const warn = existing || document.createElement("div");
+        warn.className = "activity-card__warning";
+
+        let msg = "⚠️ Bad weather for outdoor activity";
+        if (isRain) msg = "⚠️ Rain expected";
+        else if (isThunder) msg = "⚠️ Thunderstorm risk";
+        else if (isSnow) msg = "⚠️ Snow expected";
+        else if (isCold || isHot) msg = "⚠️ Extreme temperature";
+        warn.textContent = msg;
+
+        if (!existing) line.insertAdjacentElement("afterend", warn);
+      })
+      .catch(() => {
+        if (!line.isConnected) return;
+        line.textContent = "Weather unavailable";
+      });
+  }
+
   function parseMinutes(t) {
     if (!t || typeof t !== "string") return null;
     const p = t.trim().split(":");
@@ -51,6 +219,18 @@
       '<div class="form-row"><label>Notes</label><textarea id="a-notes" class="textarea">' +
       escapeHtml(activity ? activity.notes : "") +
       "</textarea></div>" +
+      '<div class="form-row"><label>Activity type</label><select id="a-type" class="input">' +
+      '<option value="indoor"' +
+      (!activity || (activity && String(activity.type || activity.activityType || "").toLowerCase() !== "outdoor")
+        ? " selected"
+        : "") +
+      ">Indoor</option>" +
+      '<option value="outdoor"' +
+      (activity && String(activity.type || activity.activityType || "").toLowerCase() === "outdoor"
+        ? " selected"
+        : "") +
+      ">Outdoor</option>" +
+      "</select></div>" +
       '<div class="form-row"><label>Status</label><select id="a-status" class="input">' +
       '<option value="draft"' +
       (activity && activity.status === "draft" ? " selected" : "") +
@@ -106,6 +286,7 @@
       const time = body.querySelector("#a-time").value;
       const location = body.querySelector("#a-loc").value.trim();
       const notes = body.querySelector("#a-notes").value.trim();
+      const type = body.querySelector("#a-type").value;
       const status = body.querySelector("#a-status").value;
       const docId = body.querySelector("#a-doc").value;
       const documentIds = docId ? [docId] : [];
@@ -115,6 +296,7 @@
         activity.time = time;
         activity.location = location;
         activity.notes = notes;
+        activity.type = type;
         activity.status = status;
         activity.documentIds = documentIds;
       } else {
@@ -124,6 +306,7 @@
           time,
           location,
           notes,
+          type,
           status,
           documentIds,
         });
@@ -268,6 +451,7 @@
         card.addEventListener("dragend", () => card.classList.remove("dragging"));
 
         list.appendChild(card);
+        __attachWeatherToCard(card, act.location);
 
         card.querySelector("[data-edit]")?.addEventListener("click", () =>
           openActivityModal(state, trip, day, act)
@@ -340,6 +524,7 @@
         label: "Day " + n,
         activities: [],
       });
+      
       global.Storage.save(state);
       toast("Day added");
       global.App.refresh();
