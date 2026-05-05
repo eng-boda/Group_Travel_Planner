@@ -1,5 +1,5 @@
 /**
- * Simulated auth: sign up, log in, log out (localStorage only)
+ * Simulated auth: sign up, log in, log out (sessionStorage only)
  */
 (function (global) {
   const { generateId, load, save } = global.Storage;
@@ -55,8 +55,6 @@
       '<input id="su-pass" type="password" class="input" autocomplete="new-password" /></div>' +
       '<button type="button" class="btn btn--primary" style="width:100%;margin-top:0.5rem;" id="btn-signup">Create account</button>' +
       "</div></div>" +
-      '<p class="muted auth-hint" style="margin-top:1rem;font-size:0.82rem;text-align:center;">' +
-      "Demo account (after data migration): <strong>demo@tripsync.app</strong> / <strong>demo</strong></p>" +
       "</div></div>";
 
     const tabs = root.querySelectorAll("#auth-tabs .tab");
@@ -108,7 +106,7 @@
       const user = { id: generateId("u"), name, email, password };
       state.users.push(user);
       state.session = { userId: user.id };
-      global.Storage.seedDemoTripForUser(state, user);
+      save(state);
       toast("Account created — you're signed in");
       global.Auth.afterLogin();
     });

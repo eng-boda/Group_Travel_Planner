@@ -128,7 +128,7 @@
       "</div></div></div>" +
       '<div class="card">' +
       "<h3 class=\"card__title\">Tips</h3>" +
-      '<p class="muted" style="font-size:0.88rem;">Use <strong>Reply</strong> to keep threads tidy. Everything is stored in your browser (localStorage).</p>' +
+      '<p class="muted" style="font-size:0.88rem;">Use <strong>Reply</strong> to keep threads tidy. Everything is stored in your browser session.</p>' +
       '<button type="button" class="btn btn--secondary" style="margin-top:0.75rem;width:100%;" id="btn-seed-msg">Add demo thread</button>' +
       "</div></div>";
 
