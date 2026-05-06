@@ -1,8 +1,9 @@
 <?php
 require_once __DIR__ . '/../../controller/AuthController.php';
+require_once __DIR__ . '/../../model/user.php';
 $auth = new AuthController();
 if (!$auth->isLoggedIn()) {
-    header('Location: ../view/Auth/login.php');
+    header("Location: ../Auth/login.php");
     exit;
 }
 $currentUser = $auth->getCurrentUser();
