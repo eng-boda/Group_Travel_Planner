@@ -1,6 +1,16 @@
 /**
  * Itinerary: days, activities, drag/drop reorder, conflict hints
  */
+async function loadActivitiesFromServer(tripId) {
+    try {
+        const res = await fetch(`../controller/get_itinerary.php?trip_id=${tripId}`);
+        const data = await res.json();
+        return data.success ? data.activities : [];
+    } catch (err) {
+        console.error("Failed to load activities", err);
+        return [];
+    }
+}
 (function (global) {
   const { escapeHtml, openModal, toast } = global.UI;
   const { generateId, getTrip } = global.Storage;
@@ -404,76 +414,143 @@
       const list = col.querySelector(".day-activities");
 
       day.activities.forEach((act, idx) => {
-        const card = document.createElement("div");
-        card.className = "activity-card";
-        card.draggable = true;
-        card.dataset.actId = act.id;
-        card.dataset.dayId = day.id;
-        card.innerHTML =
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">' +
-          '<div style="flex:1;min-width:0;"><div style="font-weight:700;">' +
-          escapeHtml(act.title) +
-          "</div>" +
-          '<span class="badge ' +
-          (act.status === "confirmed" ? "badge--confirmed" : "badge--draft") +
-          '">' +
-          escapeHtml(act.status) +
-          "</span></div>" +
-          '<div style="display:flex;flex-direction:column;gap:0.25rem;">' +
-          '<button type="button" class="btn btn--sm btn--secondary" data-up="' +
-          escapeHtml(act.id) +
-          '">↑</button>' +
-          '<button type="button" class="btn btn--sm btn--secondary" data-down="' +
-          escapeHtml(act.id) +
-          '">↓</button>' +
-          "</div></div>" +
-          '<div class="activity-card__meta">' +
-          (act.time ? "🕐 " + escapeHtml(act.time) + " · " : "") +
-          escapeHtml(act.location || "No location") +
-          "</div>" +
-          (act.notes ? '<div class="activity-card__meta">' + escapeHtml(act.notes) + "</div>" : "") +
-          '<div style="margin-top:0.5rem;display:flex;gap:0.35rem;flex-wrap:wrap;">' +
-          '<button type="button" class="btn btn--sm btn--secondary" data-edit="' +
-          escapeHtml(act.id) +
-          '">Edit</button>' +
-          '<button type="button" class="btn btn--sm btn--danger" data-del="' +
-          escapeHtml(act.id) +
-          '">Delete</button>' +
-          "</div>";
+  const card = document.createElement("div");
+  card.className = "activity-card";
+  card.draggable = true;
+  card.dataset.actId = act.id;
+  card.dataset.dayId = day.id;
+  card.dataset.activityType = act.type || "indoor";
 
-        card.addEventListener("dragstart", (e) => {
-          e.dataTransfer.setData(
-            "application/x-trip-act",
-            JSON.stringify({ dayId: day.id, actId: act.id })
-          );
-          card.classList.add("dragging");
-        });
-        card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  card.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">' +
+    '<div style="flex:1;min-width:0;"><div style="font-weight:700;">' +
+    escapeHtml(act.title) +
+    "</div>" +
+    '<span class="badge ' +
+    (act.status === "confirmed" ? "badge--confirmed" : "badge--draft") +
+    '">' +
+    escapeHtml(act.status) +
+    "</span></div>" +
+    '<div style="display:flex;flex-direction:column;gap:0.25rem;">' +
+    '<button type="button" class="btn btn--sm btn--secondary" data-up="' + escapeHtml(act.id) + '">↑</button>' +
+    '<button type="button" class="btn btn--sm btn--secondary" data-down="' + escapeHtml(act.id) + '">↓</button>' +
+    "</div></div>" +
+    '<div class="activity-card__meta">' +
+    (act.time ? "🕐 " + escapeHtml(act.time) + " · " : "") +
+    escapeHtml(act.location || "No location") +
+    "</div>" +
+    (act.notes ? '<div class="activity-card__meta">' + escapeHtml(act.notes) + "</div>" : "") +
 
-        list.appendChild(card);
-        __attachWeatherToCard(card, act.location);
+    // ── RSVP widget ──────────────────────────────────────────
+    '<div class="activity-rsvp" data-rsvp-widget="' + escapeHtml(act.id) + '" ' +
+    'style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border,#e5e7eb);">' +
+    '<div style="font-size:0.72rem;font-weight:600;color:var(--muted,#6b7280);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:.04em;">Your RSVP</div>' +
+    '<div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">' +
+    '<button type="button" class="btn btn--sm btn--secondary" data-act-rsvp="yes" data-act-id="' + escapeHtml(act.id) + '">✅ Yes</button>' +
+    '<button type="button" class="btn btn--sm btn--secondary" data-act-rsvp="maybe" data-act-id="' + escapeHtml(act.id) + '">🤔 Maybe</button>' +
+    '<button type="button" class="btn btn--sm btn--secondary" data-act-rsvp="no" data-act-id="' + escapeHtml(act.id) + '">❌ No</button>' +
+    '<span class="rsvp-counts" style="font-size:0.78rem;color:var(--muted,#6b7280);margin-left:0.25rem;"></span>' +
+    "</div></div>" +
+    // ── end RSVP widget ──────────────────────────────────────
 
-        card.querySelector("[data-edit]")?.addEventListener("click", () =>
-          openActivityModal(state, trip, day, act)
-        );
-        card.querySelector("[data-del]")?.addEventListener("click", () => {
-          if (!confirm("Delete this activity?")) return;
-          day.activities = day.activities.filter((a) => a.id !== act.id);
-          global.Storage.save(state);
-          toast("Activity removed");
-          global.App.refresh();
+    '<div style="margin-top:0.5rem;display:flex;gap:0.35rem;flex-wrap:wrap;">' +
+    '<button type="button" class="btn btn--sm btn--secondary" data-edit="' + escapeHtml(act.id) + '">Edit</button>' +
+    '<button type="button" class="btn btn--sm btn--danger" data-del="' + escapeHtml(act.id) + '">Delete</button>' +
+    "</div>";
+
+  // ── Load RSVP counts + highlight current user's choice ────
+  function loadRSVP() {
+    if (!global.RSVP || !global.RSVP.fetchActivityRSVP) return;
+    global.RSVP.fetchActivityRSVP(act.id)
+      .then((data) => {
+        if (!data || !data.success) return;
+        const widget = card.querySelector('[data-rsvp-widget="' + act.id + '"]');
+        if (!widget) return;
+
+        // Highlight active button
+        widget.querySelectorAll("[data-act-rsvp]").forEach((b) => {
+          const isActive = b.getAttribute("data-act-rsvp") === data.mine;
+          b.classList.toggle("btn--primary", isActive);
+          b.classList.toggle("btn--secondary", !isActive);
         });
-        card.querySelector("[data-up]")?.addEventListener("click", () => {
-          moveActivity(day, idx, -1);
-          global.Storage.save(state);
-          global.App.refresh();
-        });
-        card.querySelector("[data-down]")?.addEventListener("click", () => {
-          moveActivity(day, idx, 1);
-          global.Storage.save(state);
-          global.App.refresh();
-        });
+
+        // Show counts
+        const countsEl = widget.querySelector(".rsvp-counts");
+        if (countsEl && data.counts) {
+          const { yes = 0, maybe = 0, no = 0 } = data.counts;
+          countsEl.textContent =
+            yes + " going · " + maybe + " maybe · " + no + " not going";
+        }
+      })
+      .catch(() => {}); // silently ignore if activity has no DB id yet
+  }
+
+  loadRSVP();
+
+  // ── RSVP button click handlers ────────────────────────────
+  card.querySelectorAll("[data-act-rsvp]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!global.RSVP || !global.RSVP.postActivityRSVP) return;
+      const response = btn.getAttribute("data-act-rsvp");
+      const actId = btn.getAttribute("data-act-id");
+
+      // Optimistic UI: highlight immediately
+      card.querySelectorAll("[data-act-rsvp]").forEach((b) => {
+        b.classList.toggle("btn--primary", b === btn);
+        b.classList.toggle("btn--secondary", b !== btn);
       });
+
+      global.RSVP.postActivityRSVP(actId, response)
+        .then((data) => {
+          if (data.success) {
+            toast("RSVP saved");
+            loadRSVP(); // refresh counts
+          } else {
+            toast("Something went wrong");
+            loadRSVP(); // revert optimistic update
+          }
+        })
+        .catch(() => {
+          toast("Server error");
+          loadRSVP();
+        });
+    });
+  });
+
+  // ── drag / drop / edit / delete — unchanged ───────────────
+  card.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData(
+      "application/x-trip-act",
+      JSON.stringify({ dayId: day.id, actId: act.id })
+    );
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+
+  list.appendChild(card);
+  __attachWeatherToCard(card, act.location);
+
+  card.querySelector("[data-edit]")?.addEventListener("click", () =>
+    openActivityModal(state, trip, day, act)
+  );
+  card.querySelector("[data-del]")?.addEventListener("click", () => {
+    if (!confirm("Delete this activity?")) return;
+    day.activities = day.activities.filter((a) => a.id !== act.id);
+    global.Storage.save(state);
+    toast("Activity removed");
+    global.App.refresh();
+  });
+  card.querySelector("[data-up]")?.addEventListener("click", () => {
+    moveActivity(day, idx, -1);
+    global.Storage.save(state);
+    global.App.refresh();
+  });
+  card.querySelector("[data-down]")?.addEventListener("click", () => {
+    moveActivity(day, idx, 1);
+    global.Storage.save(state);
+    global.App.refresh();
+  });
+});
 
       list.addEventListener("dragover", (e) => {
         e.preventDefault();
