@@ -1,3 +1,12 @@
+<?php
+require_once __DIR__ . '/../../controller/AuthController.php';
+$auth = new AuthController();
+if (!$auth->isLoggedIn()) {
+    header('Location: ../view/Auth/login.php');
+    exit;
+}
+$currentUser = $auth->getCurrentUser();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
