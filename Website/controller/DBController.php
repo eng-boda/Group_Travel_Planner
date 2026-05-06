@@ -15,7 +15,20 @@
             }
             return true;
         }
+        public function select($query) {
+            $result = $this->connection->query($query);
+            if ($result && $result->num_rows > 0) {
+                return $result->fetch_all(MYSQLI_ASSOC);
+            }
+            return false;
+        }
 
+        public function insert($query) {
+            if ($this->connection->query($query)) {
+                return $this->connection->insert_id;
+            }
+            return false;
+            }
     }
 
 ?>
