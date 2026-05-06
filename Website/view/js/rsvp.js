@@ -17,7 +17,7 @@
       "activity_id=" + encodeURIComponent(activityId) +
       "&response=" + encodeURIComponent(response);
 
-    return fetch("../controller/RSVPController.php", {
+    return fetch("/Group_Travel_Planner/website/controller/RSVPController.php", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -33,7 +33,7 @@
    */
   function fetchActivityRSVP(activityId) {
     return fetch(
-      "../controller/RSVPController.php?activity_id=" + encodeURIComponent(activityId)
+      "/Group_Travel_Planner/website/controller/RSVPController.php?activity_id=" + encodeURIComponent(activityId)
     ).then((res) => {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
