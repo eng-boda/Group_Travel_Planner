@@ -1,111 +1,148 @@
 /**
- * RSVP: going / maybe / not going per active trip member
+ * RSVP: going / maybe / not going per active trip member (trip-level summary)
+ * Per-activity RSVP is handled inline in itinerary.js via RSVPActivityWidget.
  */
 (function (global) {
   const { escapeHtml, toast } = global.UI;
   const { getTrip } = global.Storage;
   const P = global.Permissions;
 
+  /**
+   * Post an RSVP response for a specific activity.
+   * response must be "yes" | "maybe" | "no"
+   * Returns a Promise<{success, counts, mine}>.
+   */
+  function postActivityRSVP(activityId, response) {
+    const body =
+      "activity_id=" + encodeURIComponent(activityId) +
+      "&response=" + encodeURIComponent(response);
+
+    return fetch("../controller/RSVPController.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    }).then((res) => {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  /**
+   * Fetch counts + current user's response for one activity.
+   * Returns a Promise<{success, counts:{yes,maybe,no}, mine:string|null}>.
+   */
+  function fetchActivityRSVP(activityId) {
+    return fetch(
+      "../controller/RSVPController.php?activity_id=" + encodeURIComponent(activityId)
+    ).then((res) => {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  // ── Trip-level summary view (the existing RSVP tab) ──────────────────────
   function render(container, state) {
     const trip = state.activeTripId ? getTrip(state, state.activeTripId) : null;
     const actions = document.getElementById("topbar-actions");
     if (actions) actions.innerHTML = "";
 
     if (!trip) {
-      container.innerHTML =
-        '<div class="empty"><div class="empty__icon">✓</div><p>Select a trip to manage RSVP.</p></div>';
-      return;
+        container.innerHTML = '<div class="empty"><div class="empty__icon">✓</div><p>Select a trip to manage RSVP.</p></div>';
+        return;
     }
 
-    const mem = P.findActiveMember(trip, state);
-    if (!mem) {
-      container.innerHTML =
-        '<div class="empty"><div class="empty__icon">🔒</div><p>You are not a member of this trip.</p></div>';
-      return;
+    // تجهيز قائمة النشاطات من الـ Itinerary
+    const activities = (trip.itineraryDays || []).flatMap((day) =>
+        (day.activities || []).map((a) => ({
+            dayLabel: day.label || ("Day " + (day.dayNumber || "")),
+            id: a.id,
+            title: a.title || "Untitled activity",
+            time: a.time || "",
+        }))
+    );
+
+    function activityOptionLabel(x) {
+        const bits = [x.dayLabel];
+        if (x.time) bits.push(x.time);
+        bits.push(x.title);
+        return bits.filter(Boolean).join(" · ");
     }
 
-    const activeMembers = trip.members.filter((m) => m.status === "active");
-
-    const statuses = ["going", "maybe", "not_going"];
-    const labels = { going: "Going", maybe: "Maybe", not_going: "Not going" };
-
-    function counts() {
-      const c = { going: 0, maybe: 0, not_going: 0 };
-      activeMembers.forEach((m) => {
-        const s = trip.rsvp[m.id] || "maybe";
-        if (c[s] !== undefined) c[s]++;
-        else c.maybe++;
-      });
-      return c;
+    function isValidDbActivityId(id) {
+        const n = Number(id);
+        return Number.isFinite(n) && n > 0 && String(Math.trunc(n)) === String(id).trim();
     }
 
-    function lists() {
-      const out = { going: [], maybe: [], not_going: [] };
-      activeMembers.forEach((m) => {
-        const s = trip.rsvp[m.id] || "maybe";
-        const key = s === "going" || s === "maybe" || s === "not_going" ? s : "maybe";
-        out[key].push(m);
-      });
-      return out;
+    // الواجهة الجديدة بدون الجزء العلوي المكرر
+    container.innerHTML = `
+        <div class="card card--gradient">
+            <div class="card__header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <h2 class="section-title" style="margin:0;">Activity Attendance</h2>
+                    <p class="muted" id="rsvp-activity-hint" style="margin:4px 0 0;">Select an activity to see who is attending.</p>
+                </div>
+                <div style="min-width:260px; max-width:400px; width:100%;">
+                    <select id="rsvp-activity-select" class="input" ${activities.length ? "" : "disabled"}>
+                        ${activities.length 
+                            ? activities.map(a => `<option value="${escapeHtml(String(a.id))}">${escapeHtml(activityOptionLabel(a))}</option>`).join("")
+                            : '<option value="">No activities available</option>'}
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid--3" id="rsvp-activity-grid" style="margin-top:1.5rem;">
+                <div class="card" style="border-top: 4px solid var(--success);">
+                    <h3 class="card__title">Going</h3>
+                    <div id="rsvp-act-yes" style="font-size:2.5rem; font-weight:800; color:var(--success); margin:0.5rem 0;">0</div>
+                    <ul class="list-plain" id="rsvp-act-yes-list" style="border-top:1px solid #eee; padding-top:0.5rem;"></ul>
+                </div>
+                <div class="card" style="border-top: 4px solid var(--warning);">
+                    <h3 class="card__title">Maybe</h3>
+                    <div id="rsvp-act-maybe" style="font-size:2.5rem; font-weight:800; color:var(--warning); margin:0.5rem 0;">0</div>
+                    <ul class="list-plain" id="rsvp-act-maybe-list" style="border-top:1px solid #eee; padding-top:0.5rem;"></ul>
+                </div>
+                <div class="card" style="border-top: 4px solid var(--danger);">
+                    <h3 class="card__title">Not going</h3>
+                    <div id="rsvp-act-no" style="font-size:2.5rem; font-weight:800; color:var(--danger); margin:0.5rem 0;">0</div>
+                    <ul class="list-plain" id="rsvp-act-no-list" style="border-top:1px solid #eee; padding-top:0.5rem;"></ul>
+                </div>
+            </div>
+        </div>`;
+
+    // ربط العناصر بـ JavaScript للتحكم بها
+    const sel = container.querySelector("#rsvp-activity-select");
+    const yesEl = container.querySelector("#rsvp-act-yes"), maybeEl = container.querySelector("#rsvp-act-maybe"), noEl = container.querySelector("#rsvp-act-no");
+    const yesList = container.querySelector("#rsvp-act-yes-list"), maybeList = container.querySelector("#rsvp-act-maybe-list"), noList = container.querySelector("#rsvp-act-no-list");
+
+    async function updateActivityDetails(activityId) {
+        if (!activityId || !isValidDbActivityId(activityId)) return;
+        
+        // حالة التحميل
+        [yesEl, maybeEl, noEl].forEach(el => el.textContent = "...");
+
+        try {
+            const data = await global.RSVP.fetchActivityRSVP(activityId);
+            if (data) {
+                yesEl.textContent = data.counts.yes || 0;
+                maybeEl.textContent = data.counts.maybe || 0;
+                noEl.textContent = data.counts.no || 0;
+
+                yesList.innerHTML = (data.names.yes || []).map(name => `<li>${escapeHtml(name)}</li>`).join("");
+                maybeList.innerHTML = (data.names.maybe || []).map(name => `<li>${escapeHtml(name)}</li>`).join("");
+                noList.innerHTML = (data.names.no || []).map(name => `<li>${escapeHtml(name)}</li>`).join("");
+            }
+        } catch (e) {
+            [yesEl, maybeEl, noEl].forEach(el => el.textContent = "0");
+            console.error("RSVP Fetch Error:", e);
+        }
     }
 
-    function setMyStatus(s) {
-      trip.rsvp[mem.id] = s;
-      global.Storage.save(state);
-      toast("RSVP updated");
-      render(container, state);
+    if (sel && activities.length) {
+        sel.addEventListener("change", () => updateActivityDetails(sel.value));
+        updateActivityDetails(sel.value);
     }
+}
 
-    const c = counts();
-    const L = lists();
-    const mine = trip.rsvp[mem.id] || "maybe";
-
-    container.innerHTML =
-      '<div class="card card--gradient" style="margin-bottom:1rem;">' +
-      '<div class="card__header"><h2 class="section-title" style="margin:0;">Your RSVP</h2></div>' +
-      '<p class="muted" style="margin-bottom:0.75rem;">Your status is saved for this trip workspace.</p>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">' +
-      statuses
-        .map(
-          (s) =>
-            '<button type="button" class="btn ' +
-            (mine === s ? "btn--primary" : "btn--secondary") +
-            '" data-rsvp="' +
-            s +
-            '">' +
-            escapeHtml(labels[s]) +
-            "</button>"
-        )
-        .join("") +
-      "</div></div>" +
-      '<div class="grid grid--3">' +
-      '<div class="card"><h3 class="card__title">Going</h3>' +
-      '<div style="font-size:2rem;font-weight:700;color:var(--success);margin:0.25rem 0;">' +
-      c.going +
-      "</div>" +
-      "<ul class=\"list-plain\">" +
-      L.going.map((m) => "<li>" + escapeHtml(m.name) + "</li>").join("") +
-      "</ul></div>" +
-      '<div class="card"><h3 class="card__title">Maybe</h3>' +
-      '<div style="font-size:2rem;font-weight:700;color:var(--warning);margin:0.25rem 0;">' +
-      c.maybe +
-      "</div>" +
-      "<ul class=\"list-plain\">" +
-      L.maybe.map((m) => "<li>" + escapeHtml(m.name) + "</li>").join("") +
-      "</ul></div>" +
-      '<div class="card"><h3 class="card__title">Not going</h3>' +
-      '<div style="font-size:2rem;font-weight:700;color:var(--danger);margin:0.25rem 0;">' +
-      c.not_going +
-      "</div>" +
-      "<ul class=\"list-plain\">" +
-      L.not_going.map((m) => "<li>" + escapeHtml(m.name) + "</li>").join("") +
-      "</ul></div>" +
-      "</div>";
-
-    container.querySelectorAll("[data-rsvp]").forEach((btn) => {
-      btn.addEventListener("click", () => setMyStatus(btn.getAttribute("data-rsvp")));
-    });
-  }
-
-  global.RSVP = { render };
+  // Export for use in itinerary.js
+  global.RSVP = { render, postActivityRSVP, fetchActivityRSVP };
 })(typeof window !== "undefined" ? window : globalThis);
