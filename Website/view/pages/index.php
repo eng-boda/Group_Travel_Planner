@@ -1,11 +1,13 @@
 <?php
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
+
 $auth = new AuthController();
 if (!$auth->isLoggedIn()) {
     header("Location: ../Auth/login.php");
     exit;
 }
+
 $currentUser = $auth->getCurrentUser();
 ?>
 <!DOCTYPE html>
@@ -20,9 +22,7 @@ $currentUser = $auth->getCurrentUser();
   <link rel="stylesheet" href="../css/main.css" />
 </head>
 <body>
-  <div id="auth-root" class="auth-root"></div>
-
-  <div id="app" class="app" hidden>
+  <div id="app" class="app">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar__brand">
         <div class="logo-mark" aria-hidden="true">✈</div>
@@ -70,14 +70,15 @@ $currentUser = $auth->getCurrentUser();
 
       <div class="sidebar__footer">
         <div class="user-chip" id="current-user-chip">
-          <span class="avatar avatar--sm" id="user-avatar">Y</span>
+          <span class="avatar avatar--sm" id="user-avatar">
+            <?= htmlspecialchars(mb_strtoupper(mb_substr($currentUser->name, 0, 1))) ?>
+          </span>
           <div>
-            <div class="user-chip__name" id="user-name">You</div>
-            <div class="user-chip__email muted" id="user-email" style="font-size:0.72rem;"></div>
+            <div class="user-chip__name" id="user-name"><?= htmlspecialchars($currentUser->name) ?></div>
             <div class="user-chip__role" id="user-trip-role">—</div>
           </div>
         </div>
-        <button type="button" class="btn btn--ghost btn--sm" id="btn-logout" style="width:100%;margin-top:0.5rem;">Log out</button>
+        <a href="../Auth/logout.php" class="btn btn--ghost btn--sm" style="width:100%;margin-top:0.5rem;text-align:center;text-decoration:none;" id="btn-logout">Log out</a>
       </div>
     </aside>
 
@@ -89,7 +90,9 @@ $currentUser = $auth->getCurrentUser();
         <div class="topbar__titles">
           <p class="eyebrow" id="topbar-section">Workspace</p>
           <h1 class="topbar__title" id="topbar-title">Trips Dashboard</h1>
-          <p class="muted topbar__session" id="topbar-session" style="margin:0.35rem 0 0;font-size:0.85rem;"></p>
+          <p class="muted topbar__session" id="topbar-session" style="margin:0.35rem 0 0;font-size:0.85rem;">
+            Signed in as <?= htmlspecialchars($currentUser->name) ?>
+          </p>
         </div>
         <div class="topbar__actions" id="topbar-actions"></div>
       </header>
@@ -100,6 +103,17 @@ $currentUser = $auth->getCurrentUser();
 
   <div id="modal-root" class="modal-root" aria-live="polite"></div>
   <div id="toast-root" class="toast-root"></div>
+
+  <?php
+  // Inject the authenticated user's ID into JS state bootstrap so the
+  // frontend permission layer can match the session user to trip members.
+  ?>
+  <script>
+    window.__serverSession = {
+      userId: <?= json_encode($currentUser->user_id ?? null) ?>,
+      userName: <?= json_encode($currentUser->name ?? '') ?>,
+    };
+  </script>
 
   <script src="../js/storage.js"></script>
   <script src="../js/permissions.js"></script>
