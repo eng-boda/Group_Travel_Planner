@@ -15,6 +15,15 @@
             }
             return true;
         }
+
+        public function closeConnection() {
+            if($this->connection) {
+                $this->connection->close();
+            } else {
+                echo "Connection is not opened";
+            }
+        }
+
         public function select($query) {
             $result = $this->connection->query($query);
             if ($result && $result->num_rows > 0) {
