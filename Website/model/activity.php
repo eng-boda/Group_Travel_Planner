@@ -72,5 +72,39 @@ public function getActivitiesByTrip($trip_id) {
 
     return $result;
 }
+
+public function getActivity($id) {
+    if(!$this->db->openConnection()) return false;
+    $query = "SELECT * FROM activity WHERE activity_id = $id";
+    $result = $this->db->select($query);
+    $this->db->closeConnection();
+    return $result ? $result[0] : null;
+}
+
+public function update() {
+    if(!$this->db->openConnection()) return false;
+
+    $query = "UPDATE activity SET 
+              title = '$this->title', 
+              activity_location = '$this->activity_location', 
+              type = '$this->type', 
+              activity_state = '$this->activity_state', 
+              activity_date = '$this->activity_date', 
+              activity_time = '$this->activity_time' 
+              WHERE activity_id = '$this->activity_id'";
+
+    $result = $this->db->insert($query);
+    $this->db->closeConnection();
+    return $result;
+}
+
+public function delete($id) {
+    if(!$this->db->openConnection()) return false;
+    $query = "DELETE FROM activity WHERE activity_id = $id";
+    $result = $this->db->insert($query);
+    $this->db->closeConnection();
+    return $result;
+}
+
 }
 ?>
