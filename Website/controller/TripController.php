@@ -47,7 +47,7 @@ class TripController {
 
         // حماية: التأكد إن اللي بيعدل هو القائد
         if(!$roleController->isLeader($user_id, $trip_id)) {
-            die("Unauthorized Action: You are not the leader.");
+            return false;
         }
 
         $trip = new Trip();
@@ -66,7 +66,7 @@ class TripController {
         $roleController = new RoleController();
 
         if(!$roleController->isLeader($user_id, $trip_id)) {
-            die("Access Denied: You are not the leader.");
+            return false;
         }
 
         $trip = new Trip();

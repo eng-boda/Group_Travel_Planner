@@ -45,16 +45,26 @@ if ($active_trip_id) {
 }
 
 if(isset($_POST['delete_trip'])) {
+    $trip_id_to_delete = $_POST['delete_trip_id'];
 
-    if(!$roleController->isLeader($currentUser->user_id, $_POST['delete_trip_id'])) {
-        die("Access Denied");
-    }
-
-    if($tripController->delete($_POST['delete_trip_id'], $currentUser->user_id)) {
-        $_SESSION['message'] = "Trip Deleted Successfully";
+    // التأكد من الصلاحية
+    if(!$roleController->isLeader($currentUser->user_id, $trip_id_to_delete)) {
+        $_SESSION['error'] = "Access Denied: You are not the leader of this trip!";
         header("Location: index.php");
         exit;
     }
+
+    // تنفيذ الحذف
+    $isDeleted = $tripController->delete($trip_id_to_delete, $currentUser->user_id);
+
+    // التعديل هنا: نتأكد إن النتيجة مش false صريحة
+    if($isDeleted !== false) {
+        $_SESSION['message'] = "Trip Deleted Successfully";
+    } else {
+        $_SESSION['error'] = "Failed to delete the trip. Please try again.";
+    }
+    header("Location: index.php");
+    exit;
 }
 
 $edit_trip = null;
@@ -204,6 +214,23 @@ if(isset($_POST['update_trip'])) {
     </div>
     </header>
     <div class="content">
+        <?php if(isset($_SESSION['message'])): ?>
+        <div style="background: #d1e7dd; color: #0f5132; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #badbcc; width: 100%;">
+            ✅ <?php echo $_SESSION['message']; unset($_SESSION['message']); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if(isset($_SESSION['error'])): ?>
+        <div style="background: #f8d7da; color: #842029; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #f5c2c7; width: 100%;">
+            ⚠️ <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+        </div>
+    <?php endif; ?>
+
+    <div class="tabs">
+        <button type="button" class="tab is-active">Overview</button>
+        <button type="button" class="tab">All trips</button>
+        <button type="button" class="tab">Members</button>
+    </div>
 
       <div class="tabs"><button type="button" class="tab is-active">Overview</button><button type="button" class="tab">All trips</button><button type="button" class="tab">Members</button></div>
       <div class="grid grid--3">
