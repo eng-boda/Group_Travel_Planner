@@ -7,7 +7,6 @@ class User{
     public $password;
     public $nationality;
     public $passportStatus;
-    public $role;
 }
 
 ?>
