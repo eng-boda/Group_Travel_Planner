@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
+require_once __DIR__ . '/../../controller/TripController.php';
 
 $auth = new AuthController();
 if (!$auth->isLoggedIn()) {
@@ -9,6 +10,19 @@ if (!$auth->isLoggedIn()) {
 }
 
 $currentUser = $auth->getCurrentUser();
+if(isset($_POST['create_trip'])) {
+
+    $tripController = new TripController();
+
+    $result = $tripController->addTrip($_POST, $currentUser->user_id);
+
+    if($result){
+        echo "<script>alert('Trip Added Successfully')</script>";
+    }
+    else{
+        echo "<script>alert('Failed To Add Trip')</script>";
+    }
+}
 ?>
 
 
@@ -101,13 +115,92 @@ $currentUser = $auth->getCurrentUser();
       </div>
 
       <h2 class="section-title" style="margin-top:2rem;">New trip form</h2>
-      <div class="card"><div class="form-grid">
-        <div class="form-row"><label for="f-name">Trip name</label><input id="f-name" class="input" value="Weekend Getaway" /></div>
-        <div class="form-row"><label for="f-desc">Description</label><textarea id="f-desc" class="textarea">A fun trip with the team</textarea></div>
-        <div class="form-row"><label for="f-start">Start date</label><input id="f-start" type="date" class="input" value="2025-08-01" /></div>
-        <div class="form-row"><label for="f-end">End date</label><input id="f-end" type="date" class="input" value="2025-08-05" /></div>
-        <div class="form-row"><label for="f-budget">Trip budget</label><input id="f-budget" type="number" class="input" value="3000" /></div>
-        <div style="display:flex;gap:0.5rem;justify-content:flex-end;"><button type="button" class="btn btn--secondary">Cancel</button><button type="button" class="btn btn--primary">Create trip</button></div>
+
+<form method="POST" class="card">
+  <div class="form-grid">
+
+    <div class="form-row">
+      <label for="f-name">Trip name</label>
+      <input 
+        id="f-name"
+        name="trip_name"
+        class="input"
+        value="Weekend Getaway"
+      />
+    </div>
+
+    <div class="form-row">
+      <label for="f-desc">Description</label>
+      <textarea 
+        id="f-desc"
+        name="description"
+        class="textarea"
+      >A fun trip with the team</textarea>
+    </div>
+
+    <div class="form-row">
+      <label for="f-start">Start date</label>
+      <input 
+        id="f-start"
+        name="start_date"
+        type="date"
+        class="input"
+        value="2025-08-01"
+      />
+    </div>
+
+    <div class="form-row">
+      <label for="f-end">End date</label>
+      <input 
+        id="f-end"
+        name="end_date"
+        type="date"
+        class="input"
+        value="2025-08-05"
+      />
+    </div>
+
+    <div class="form-row">
+      <label for="f-budget">Trip budget</label>
+      <input 
+        id="f-budget"
+        name="budget"
+        type="number"
+        class="input"
+        value="3000"
+      />
+    </div>
+
+    <div class="form-row">
+      <label for="f-currency">Base currency</label>
+
+      <select
+        id="f-currency"
+        name="base_currency"
+        class="input"
+      >
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+        <option value="EGP">EGP</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+      <button type="button" class="btn btn--secondary">
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        name="create_trip"
+        class="btn btn--primary"
+      >
+        Create trip
+      </button>
+    </div>
+
+  </div>
+</form>
       </div></div>
     </div>
   </main>
