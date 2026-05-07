@@ -193,7 +193,37 @@ if (isset($_GET['edit_activity_id'])) {
                           <button type="submit" name="delete_activity" class="btn btn--sm btn--danger">Remove</button>
                       </form>
                   </div>
-              </div>
+                 <form action="../../controller/RSVPController.php" method="POST"
+      style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+
+    <input type="hidden"
+           name="activity_id"
+           value="<?php echo $a['activity_id']; ?>">
+
+    <button type="submit"
+            name="response"
+            value="yes"
+            class="btn btn--sm">
+        ✅Yes
+    </button>
+
+    <button type="submit"
+            name="response"
+            value="maybe"
+            class="btn btn--sm btn--secondary">
+        🤔Maybe
+    </button>
+
+    <button type="submit"
+            name="response"
+            value="no"
+            class="btn btn--sm btn--danger">
+        ❌No
+    </button>
+
+</form>
+
+</div>
             <?php endforeach; ?>
         <?php endforeach; ?>
     <?php else: ?>
