@@ -95,7 +95,7 @@ class AuthController
         $user           = new User();
         $user->user_id  = $_SESSION['userId'];
         $user->name     = $_SESSION['userName'];
-        $user->role     = $_SESSION['userRole'];
+        // $user->role     = $_SESSION['userRole'];
         return $user;
     }
 

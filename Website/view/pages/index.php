@@ -10,19 +10,59 @@ if (!$auth->isLoggedIn()) {
 }
 
 $currentUser = $auth->getCurrentUser();
+
+$tripController = new TripController();
+
 if(isset($_POST['create_trip'])) {
-
-    $tripController = new TripController();
-
     $result = $tripController->addTrip($_POST, $currentUser->user_id);
 
     if($result){
-        echo "<script>alert('Trip Added Successfully')</script>";
+        $_SESSION['message'] = "Trip Added Successfully";
+        header("Location: index.php"); 
+        exit; 
     }
     else{
         echo "<script>alert('Failed To Add Trip')</script>";
     }
 }
+
+$trips = $tripController->getAllTrips($currentUser->user_id);
+
+$active_trip_id = isset($_GET['trip_id']) ? $_GET['trip_id'] : ($trips[0]['trip_id'] ?? null);
+
+if ($active_trip_id) {
+    $activeTrip = array_filter($trips, function($t) use ($active_trip_id) {
+        return $t['trip_id'] == $active_trip_id;
+    });
+    $activeTrip = reset($activeTrip);
+    
+    $total_spent = 1250;
+    $budget_limit = $activeTrip['budget'];
+    $progress_percent = ($budget_limit > 0) ? ($total_spent / $budget_limit) * 100 : 0;
+}
+
+if(isset($_POST['delete_trip'])) {
+    if($tripController->delete($_POST['delete_trip_id'])) {
+        $_SESSION['message'] = "Trip Deleted Successfully";
+        header("Location: index.php");
+        exit;
+    }
+}
+
+$edit_trip = null;
+if(isset($_GET['edit_id'])) {
+    $edit_trip = $tripController->getTripById($_GET['edit_id']);
+}
+
+if(isset($_POST['update_trip'])) {
+    $result = $tripController->update($_POST, $_POST['trip_id']);
+    if($result) {
+        $_SESSION['message'] = "Trip Updated Successfully";
+        header("Location: index.php");
+        exit;
+    }
+}
+
 ?>
 
 
@@ -48,13 +88,12 @@ if(isset($_POST['create_trip'])) {
       </div>
     </div>
     <div class="sidebar__trip">
-      <label class="field-label" for="trip-select">Active trip</label>
-      <select id="trip-select" class="select select--full">
-        <option value="trip1" selected>Summer Europe Tour</option>
-        <option value="trip2">Berlin Workshop</option>
-        <option value="trip3">Tokyo Summit</option>
-      </select>
-      <a href="index.php" class="btn btn--ghost btn--sm sidebar__new-trip" style="text-decoration:none;text-align:center;">+ New trip</a>
+    <label class="field-label">Active trip</label>
+    <div class="select select--full" style="background: #f8f9fa; border-color: #e9ecef; cursor: default; color: #495057;">
+        <?php 
+            echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; 
+        ?>
+    </div>
     </div>
     <nav class="sidebar__nav" aria-label="Main navigation">
       <a href="index.php" class="nav-item is-active" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">◉</span> Dashboard</a>
@@ -87,7 +126,18 @@ if(isset($_POST['create_trip'])) {
         <h1 class="topbar__title">Trips Dashboard</h1>
         <p class="muted topbar__session" style="margin:0.35rem 0 0;font-size:0.85rem;">Signed in as <?php echo $currentUser->name ?></p>
       </div>
-      <div class="topbar__actions"><a href="index.php" class="btn btn--primary" style="text-decoration:none;">+ New trip</a> <button type="button" class="btn btn--secondary">Edit trip</button> <button type="button" class="btn btn--danger">Delete</button></div>
+      <div class="topbar__actions">
+    <a href="index.php#new_trip" class="btn btn--primary" style="text-decoration:none;">+ New trip</a>
+
+    <?php if ($active_trip_id): ?>
+            <a href="index.php?edit_id=<?php echo $active_trip_id; ?>#new_trip" class="btn btn--secondary" style="text-decoration:none;">Edit trip</a>
+
+            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete the active trip?');">
+                <input type="hidden" name="delete_trip_id" value="<?php echo $active_trip_id; ?>">
+                <button type="submit" name="delete_trip" class="btn btn--danger">Delete</button>
+            </form>
+        <?php endif; ?>
+    </div>
     </header>
     <div class="content">
 
@@ -101,9 +151,35 @@ if(isset($_POST['create_trip'])) {
 
       <h2 class="section-title" style="margin-top:2rem;">All trips</h2>
       <div class="grid grid--2">
-        <div class="card"><div class="card__header"><h3 class="card__title">Summer Europe Tour</h3><span class="badge badge--confirmed">Active</span></div><p class="muted">2025-07-10 → 2025-07-20</p><div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.4rem;"><button type="button" class="btn btn--sm btn--primary">Open</button><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-        <div class="card"><div class="card__header"><h3 class="card__title">Berlin Workshop</h3></div><p class="muted">2025-09-01 → 2025-09-05</p><div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.4rem;"><button type="button" class="btn btn--sm btn--primary">Open</button><span class="muted" style="font-size:0.8rem;align-self:center;">Member access</span></div></div>
-        <div class="card"><div class="card__header"><h3 class="card__title">Tokyo Summit</h3></div><p class="muted">2025-11-15 → 2025-11-22</p><div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.4rem;"><button type="button" class="btn btn--sm btn--primary">Open</button><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
+        <?php 
+            $tripController = new TripController();
+            $trips = $tripController->getAllTrips($currentUser->user_id);
+
+            if ($trips) {
+                foreach ($trips as $trip) { 
+            ?>
+                <div class="card">
+                    <div class="card__header">
+                        <h3 class="card__title"><?php echo htmlspecialchars($trip['trip_name']); ?></h3>
+                        </div>
+                    <p class="muted">
+                        <?php echo $trip['start_date']; ?> → <?php echo $trip['end_date']; ?>
+                    </p>
+                    <div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.4rem;">
+                        <a href="index.php?trip_id=<?php echo $trip['trip_id']; ?>" class="btn btn--sm btn--primary" style="text-decoration:none; text-align:center;">Open</a>
+                        <a href="index.php?edit_id=<?php echo $trip['trip_id']; ?>#new_trip" class="btn btn--sm btn--secondary" style="text-decoration:none;">Edit</a>
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                            <input type="hidden" name="delete_trip_id" value="<?php echo $trip['trip_id']; ?>">
+                            <button type="submit" name="delete_trip" class="btn btn--sm btn--danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            <?php 
+                } 
+            } else {
+                echo "<p class='muted'>No trips found. Create your first trip below!</p>";
+            }
+            ?>
       </div>
 
       <div style="margin-top:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;"><h2 class="section-title" style="margin:0;">Team snapshot</h2><a href="members.php" class="btn btn--primary" style="text-decoration:none;">Open members panel</a></div>
@@ -114,92 +190,64 @@ if(isset($_POST['create_trip'])) {
         <div class="card" style="padding:0.85rem;display:flex;align-items:center;gap:0.75rem;"><span class="avatar" style="background:#f43f5e">A</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:0.9rem;">Ahmed Ali</div><div class="muted" style="font-size:0.8rem;">Member · active</div></div></div>
       </div>
 
-      <h2 class="section-title" style="margin-top:2rem;">New trip form</h2>
+
+<h2 class="section-title" style="margin-top:2rem;" id="new_trip">
+    <?php echo $edit_trip ? "Edit Trip: " . htmlspecialchars($edit_trip['trip_name']) : "New trip form"; ?>
+</h2>
 
 <form method="POST" class="card">
-  <div class="form-grid">
+    <?php if($edit_trip): ?>
+        <input type="hidden" name="trip_id" value="<?php echo $edit_trip['trip_id']; ?>">
+    <?php endif; ?>
 
-    <div class="form-row">
-      <label for="f-name">Trip name</label>
-      <input 
-        id="f-name"
-        name="trip_name"
-        class="input"
-        value="Weekend Getaway"
-      />
+    <div class="form-grid">
+        <div class="form-row">
+            <label for="f-name">Trip name</label>
+            <input id="f-name" name="trip_name" class="input" 
+                   value="<?php echo $edit_trip ? htmlspecialchars($edit_trip['trip_name']) : 'Weekend Getaway'; ?>" required />
+        </div>
+
+        <div class="form-row">
+            <label for="f-desc">Description</label>
+            <textarea id="f-desc" name="description" class="textarea"><?php echo $edit_trip ? htmlspecialchars($edit_trip['trip_description'] ?? $edit_trip['description']) : 'A fun trip with the team'; ?></textarea>
+        </div>
+
+        <div class="form-row">
+            <label for="f-start">Start date</label>
+            <input id="f-start" name="start_date" type="date" class="input" 
+                   value="<?php echo $edit_trip ? $edit_trip['start_date'] : '2025-08-01'; ?>" required />
+        </div>
+
+        <div class="form-row">
+            <label for="f-end">End date</label>
+            <input id="f-end" name="end_date" type="date" class="input" 
+                   value="<?php echo $edit_trip ? $edit_trip['end_date'] : '2025-08-05'; ?>" required />
+        </div>
+
+        <div class="form-row">
+            <label for="f-budget">Trip budget</label>
+            <input id="f-budget" name="budget" type="number" class="input" 
+                   value="<?php echo $edit_trip ? $edit_trip['budget'] : '3000'; ?>" />
+        </div>
+
+        <div class="form-row">
+            <label for="f-currency">Base currency</label>
+            <select id="f-currency" name="base_currency" class="input">
+                <option value="USD" <?php echo ($edit_trip && $edit_trip['base_currency'] == 'USD') ? 'selected' : ''; ?>>USD</option>
+                <option value="EUR" <?php echo ($edit_trip && $edit_trip['base_currency'] == 'EUR') ? 'selected' : ''; ?>>EUR</option>
+                <option value="EGP" <?php echo ($edit_trip && $edit_trip['base_currency'] == 'EGP') ? 'selected' : ''; ?>>EGP</option>
+            </select>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+            <?php if($edit_trip): ?>
+                <a href="index.php" class="btn btn--secondary" style="text-decoration:none;">Cancel Edit</a>
+                <button type="submit" name="update_trip" class="btn btn--primary">Update trip</button>
+            <?php else: ?>
+                <button type="submit" name="create_trip" class="btn btn--primary">Create trip</button>
+            <?php endif; ?>
+        </div>
     </div>
-
-    <div class="form-row">
-      <label for="f-desc">Description</label>
-      <textarea 
-        id="f-desc"
-        name="description"
-        class="textarea"
-      >A fun trip with the team</textarea>
-    </div>
-
-    <div class="form-row">
-      <label for="f-start">Start date</label>
-      <input 
-        id="f-start"
-        name="start_date"
-        type="date"
-        class="input"
-        value="2025-08-01"
-      />
-    </div>
-
-    <div class="form-row">
-      <label for="f-end">End date</label>
-      <input 
-        id="f-end"
-        name="end_date"
-        type="date"
-        class="input"
-        value="2025-08-05"
-      />
-    </div>
-
-    <div class="form-row">
-      <label for="f-budget">Trip budget</label>
-      <input 
-        id="f-budget"
-        name="budget"
-        type="number"
-        class="input"
-        value="3000"
-      />
-    </div>
-
-    <div class="form-row">
-      <label for="f-currency">Base currency</label>
-
-      <select
-        id="f-currency"
-        name="base_currency"
-        class="input"
-      >
-        <option value="USD">USD</option>
-        <option value="EUR">EUR</option>
-        <option value="EGP">EGP</option>
-      </select>
-    </div>
-
-    <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-      <button type="button" class="btn btn--secondary">
-        Cancel
-      </button>
-
-      <button
-        type="submit"
-        name="create_trip"
-        class="btn btn--primary"
-      >
-        Create trip
-      </button>
-    </div>
-
-  </div>
 </form>
       </div></div>
     </div>

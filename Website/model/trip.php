@@ -46,5 +46,42 @@ VALUES
 
         return $result;
     }
+
+    public function deleteTrip($trip_id) {
+        if(!$this->db->openConnection()) {
+            return false;
+        }
+        $query = "DELETE FROM trip WHERE trip_id = $trip_id";
+        $result = $this->db->insert($query);
+        $this->db->closeConnection();
+        return $result;
+    }
+
+    public function updateTrip($trip_id) {
+        if(!$this->db->openConnection()) {
+            return false;
+        }
+
+        $query = "UPDATE trip SET 
+                trip_name = '$this->trip_name', 
+                trip_description = '$this->description', 
+                start_date = '$this->start_date', 
+                end_date = '$this->end_date', 
+                budget = '$this->budget', 
+                base_currency = '$this->base_currency' 
+                WHERE trip_id = $trip_id";
+
+        $result = $this->db->insert($query);
+        $this->db->closeConnection();
+        return $result;
+    }
+
+    public function getTripById($id) {
+        if(!$this->db->openConnection()) return false;
+        $query = "SELECT * FROM trip WHERE trip_id = $id";
+        $result = $this->db->select($query);
+        $this->db->closeConnection();
+        return ($result) ? $result[0] : null;
+    }
 }
 ?>
