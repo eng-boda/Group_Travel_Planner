@@ -1,25 +1,40 @@
 <?php
+ob_start();
+session_start();
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
 require_once __DIR__ . '/../../controller/ItineraryController.php';
 
 $auth = new AuthController();
-
 $currentUser = $auth->getCurrentUser();
-if(isset($_POST['add_activity'])) {
-
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_activity'])) {
     $activityController = new ItineraryController();
-
     $result = $activityController->addActivity($_POST);
 
-    if($result){
-        echo "<script>alert('Activity Added Successfully')</script>";
+    if ($result) {
+      $_SESSION['success_msg'] = "Activity Added Successfully";
+        header("Location: itinerary.php?added=1");
+        exit(); 
     }
-    else{
-        echo "<script>alert('Failed To Add Activity')</script>";
+}
+
+$activityController = new ItineraryController();
+$activities = $activityController->getActivities(1);
+$grouped = [];
+
+if ($activities) {
+    foreach ($activities as $act) {
+        $grouped[$act['activity_date']][] = $act;
     }
 }
 ?>
+<?php if(isset($_SESSION['success_msg'])): ?>
+    <script>
+        alert('<?php echo $_SESSION['success_msg']; ?>');
+    </script>
+    <?php unset($_SESSION['success_msg']);?>
+<?php endif; ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,21 +73,28 @@ if(isset($_POST['add_activity'])) {
     </header>
     <div class="content">
 
-<div class="conflict-banner"><span>⚠</span><div><strong>Possible schedule overlap</strong> on Day 1.</div></div>
+
 <div class="tabs"><button type="button" class="tab is-active">Board</button><button type="button" class="tab">Compact list</button></div>
-<div class="day-board">
-  <div class="day-column"><div class="day-column__head"><span class="day-column__label">Day 1</span><button type="button" class="btn btn--sm btn--secondary">Add here</button></div><div class="day-activities">
-    <div class="activity-card"><div style="font-weight:700;">City Walking Tour</div><span class="badge badge--confirmed">confirmed</span><div class="activity-card__meta">🕐 09:00 · Central Square</div><div class="activity-card__meta">Meet at the fountain</div><div class="activity-card__meta">☀️ 28°C · Partly cloudy</div><div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(99,102,241,0.12);"><div style="font-size:0.72rem;font-weight:600;color:#64748b;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:.04em;">Your RSVP</div><div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;"><button type="button" class="btn btn--sm btn--primary">✅ Yes</button><button type="button" class="btn btn--sm btn--secondary">🤔 Maybe</button><button type="button" class="btn btn--sm btn--secondary">❌ No</button><span style="font-size:0.78rem;color:#64748b;margin-left:0.25rem;">3 going · 1 maybe · 0 not going</span></div></div><div style="margin-top:0.5rem;display:flex;gap:0.35rem;"><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-    <div class="activity-card"><div style="font-weight:700;">Museum Visit</div><span class="badge badge--confirmed">confirmed</span><div class="activity-card__meta">🕐 14:00 · National Museum</div><div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(99,102,241,0.12);"><div style="font-size:0.72rem;font-weight:600;color:#64748b;margin-bottom:0.35rem;text-transform:uppercase;">Your RSVP</div><div style="display:flex;gap:0.35rem;flex-wrap:wrap;"><button type="button" class="btn btn--sm btn--secondary">✅ Yes</button><button type="button" class="btn btn--sm btn--primary">🤔 Maybe</button><button type="button" class="btn btn--sm btn--secondary">❌ No</button><span style="font-size:0.78rem;color:#64748b;margin-left:0.25rem;">2 going · 2 maybe · 0 not going</span></div></div><div style="margin-top:0.5rem;display:flex;gap:0.35rem;"><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-    <div class="activity-card"><div style="font-weight:700;">Dinner Reservation</div><span class="badge badge--draft">draft</span><div class="activity-card__meta">🕐 19:30 · La Bella Italia</div><div style="margin-top:0.5rem;display:flex;gap:0.35rem;"><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-  </div></div>
-  <div class="day-column"><div class="day-column__head"><span class="day-column__label">Day 2</span><button type="button" class="btn btn--sm btn--secondary">Add here</button></div><div class="day-activities">
-    <div class="activity-card"><div style="font-weight:700;">Beach Day</div><span class="badge badge--confirmed">confirmed</span><div class="activity-card__meta">🕐 10:00 · Sunny Beach</div><div class="activity-card__meta">☀️ 32°C · Clear</div><div style="margin-top:0.5rem;display:flex;gap:0.35rem;"><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-    <div class="activity-card"><div style="font-weight:700;">Sunset Cruise</div><span class="badge badge--draft">draft</span><div class="activity-card__meta">🕐 17:00 · Harbor Marina</div><div class="activity-card__meta">Bring warm jacket</div><div style="margin-top:0.5rem;display:flex;gap:0.35rem;"><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-  </div></div>
-  <div class="day-column"><div class="day-column__head"><span class="day-column__label">Day 3</span><button type="button" class="btn btn--sm btn--secondary">Add here</button></div><div class="day-activities">
-    <div class="activity-card"><div style="font-weight:700;">Checkout & Airport</div><span class="badge badge--confirmed">confirmed</span><div class="activity-card__meta">🕐 08:00 · Hotel Lobby</div><div style="margin-top:0.5rem;display:flex;gap:0.35rem;"><button type="button" class="btn btn--sm btn--secondary">Edit</button><button type="button" class="btn btn--sm btn--danger">Delete</button></div></div>
-  </div></div>
+<div class="day-board"> <?php foreach ($grouped as $date => $acts): ?>
+        <div class="day-column"> <div class="day-column__head">
+                <span class="day-column__label">Day: <?= $date ?></span>
+                
+            </div>
+            
+            <div class="day-activities"> <?php foreach ($acts as $a): ?>
+                    <div class="activity-card">
+                        <div class="activity-card__title">
+                            <strong><?= $a['title'] ?></strong>
+                        </div>
+                        <div class="activity-card__meta">
+                            🕐 <?= $a['activity_time'] ?> · <?= $a['activity_location'] ?>
+                        </div>
+                        <span class="badge badge--confirmed" style="margin-top:0.5rem; font-size:0.65rem;">Confirmed</span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endforeach; ?>
 </div>
 <h2 class="section-title" style="margin-top:2rem;">Compact list view</h2>
 <div class="card" style="margin-bottom:0.75rem;"><h3 class="card__title">Day 1</h3><ul class="list-plain"><li><strong>City Walking Tour</strong> — 09:00 · Central Square</li><li><strong>Museum Visit</strong> — 14:00 · National Museum</li><li><strong>Dinner Reservation</strong> — 19:30 · La Bella Italia</li></ul></div>
@@ -96,7 +118,8 @@ if(isset($_POST['add_activity'])) {
 <input
   name="title"
   class="input"
-  value="Guided Tour"
+  value=""
+  placeholder="e.g., Eiffel Tower Visit"
 />
 </div>
 
@@ -117,7 +140,7 @@ if(isset($_POST['add_activity'])) {
   type="time"
   name="activity_time"
   class="input"
-  value="10:00"
+  value=""
 />
 </div>
 
@@ -127,7 +150,8 @@ if(isset($_POST['add_activity'])) {
 <input
   name="location"
   class="input"
-  value="Old Town"
+  value=""
+  placeholder="enter activity location..."
 />
 </div>
 
@@ -140,8 +164,9 @@ if(isset($_POST['add_activity'])) {
   name="type"
   class="input"
 >
+<option value="" disabled selected>Choose activity type...</option>
   <option>Indoor</option>
-  <option selected>Outdoor</option>
+  <option >Outdoor</option>
 </select>
 
 </div>
@@ -153,8 +178,9 @@ if(isset($_POST['add_activity'])) {
   name="activity_state"
   class="input"
 >
+<option value="" disabled selected>Choose activity stat...</option>
   <option>Draft</option>
-  <option selected>Confirmed</option>
+  <option >Confirmed</option>
 </select>
 
 </div>

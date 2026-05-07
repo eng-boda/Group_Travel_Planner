@@ -15,7 +15,7 @@ class Activity {
     public $activity_state;
 
     public $activity_date;
-    public $activity_time;
+   public $activity_time;
 
     private $db;
 
@@ -37,7 +37,8 @@ class Activity {
         activity_location,
         type,
         activity_state,
-        activity_date
+        activity_date,
+        activity_time
     )
     VALUES
     (
@@ -46,11 +47,26 @@ class Activity {
         '$this->activity_location',
         '$this->type',
         '$this->activity_state',
-        '$this->activity_date'
+        '$this->activity_date',
+        '$this->activity_time'
     )
     ";
 
     $result = $this->db->insert($query);
+
+    $this->db->closeConnection();
+
+    return $result;
+}
+public function getActivitiesByTrip($trip_id) {
+
+    if(!$this->db->openConnection()) {
+        return [];
+    }
+
+    $query = "SELECT * FROM activity WHERE trip_id = $trip_id ORDER BY activity_date, activity_time";
+
+    $result = $this->db->select($query);
 
     $this->db->closeConnection();
 

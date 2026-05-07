@@ -794,11 +794,11 @@ select.input:focus {
 }
 
 .day-column {
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.06), transparent);
-  border-radius: var(--radius);
-  border: 1px dashed var(--border-strong);
-  padding: 1rem;
-  min-height: 120px;
+  background: rgba(255, 255, 255, 0.5); /* خلفية شفافة شوية */
+    backdrop-filter: blur(10px); /* تأثير زجاجي */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px; /* حواف دائرية أكتر */
+    padding: 20px;
 }
 
 .day-column__head {
@@ -814,36 +814,67 @@ select.input:focus {
   font-size: 0.95rem;
 }
 
-.day-activities.is-drag-over {
-  outline: 2px dashed var(--accent);
-  outline-offset: 4px;
-  border-radius: var(--radius-sm);
+/* المنطقة اللي بيترص فيها الكروت جوه العمود */
+.day-activities {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem; /* مسافة ثابتة ومنظمة بين الكروت */
+    min-height: 100px; /* عشان لو اليوم فاضي تعرفي تسحبي فيه حاجات */
 }
 
+/* الكارت الأساسي */
 .activity-card {
-  background: var(--surface);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem;
-  margin-bottom: 0.6rem;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  cursor: grab;
-  transition: box-shadow var(--transition), transform 0.15s ease;
+    background: var(--surface, white);
+    border-radius: var(--radius-sm, 12px);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    width: 100%; /* عشان يملأ عرض العمود */
+    cursor: grab; /* بيدي إيحاء إن الكارت قابل للسحب */
+    transition: all 0.2s ease;
 }
 
+/* تأثير عند تمرير الماوس */
+.activity-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent); /* يدي لون خفيف عند الهوفر */
+}
+
+/* تأثير أثناء السحب أو الضغط */
 .activity-card:active {
-  cursor: grabbing;
+    cursor: grabbing;
 }
 
 .activity-card.dragging {
-  opacity: 0.65;
-  transform: scale(0.98);
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+/* تفاصيل النص جوه الكارت */
+.activity-card__title {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 1rem;
 }
 
 .activity-card__meta {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* لو المكان فاضي وهنسحب عليه */
+.day-activities.is-drag-over {
+    background: rgba(var(--accent-rgb), 0.05);
+    outline: 2px dashed var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
 }
 
 .conflict-banner {
@@ -1176,3 +1207,42 @@ select.input:focus {
 ::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.04);
 }
+
+/* الحاوية اللي شايلة كل الأعمدة */
+.day-board {
+    display: flex;
+    gap: 1.25rem;
+    padding: 1rem 0;
+    overflow-x: auto; /* عشان لو الأيام كتير يظهر سكرول بالعرض */
+    align-items: flex-start;
+    min-height: 70vh;
+}
+
+/* العمود نفسه (زي الصورة) */
+.day-column {
+    background: #f8fafc; /* لون هادي للخلفية */
+    border-radius: var(--radius-md);
+    min-width: 280px;
+    max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    border: 1px solid var(--border);
+}
+
+.day-column__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.day-column__label {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* منطقة الأنشطة */
+
+
+
