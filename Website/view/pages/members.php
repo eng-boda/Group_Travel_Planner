@@ -110,7 +110,7 @@ if ($active_trip_id) {
 </nav>
     <div class="sidebar__footer">
       <div class="user-chip">
-        <span class="avatar avatar--sm" style="background:#6366f1">A</span>
+        <span class="avatar avatar--sm" style="background:#6366f1"><?php echo ucfirst($currentUser->name[0]) ?></span>
         <div>
           <div class="user-chip__name"><?php echo $currentUser->name ?></div>
           <div class="user-chip__role">Organizer on this trip</div>
