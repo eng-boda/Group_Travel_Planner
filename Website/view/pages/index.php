@@ -17,6 +17,7 @@ if (!$auth->isLoggedIn()) {
 $currentUser    = $auth->getCurrentUser();
 $tripController = new TripController();
 
+// ── Create trip ──────────────────────────────────────────────────────────────
 if (isset($_POST['create_trip'])) {
     $result = $tripController->addTrip($_POST, $currentUser->user_id);
     if ($result) {
@@ -24,7 +25,9 @@ if (isset($_POST['create_trip'])) {
         header("Location: index.php");
         exit;
     } else {
-        echo "<script>alert('Failed To Add Trip')</script>";
+        $_SESSION['error'] = "Failed To Add Trip. Please try again.";
+        header("Location: index.php");
+        exit;
     }
 }
 
@@ -61,32 +64,48 @@ if ($activeTrip) {
     $progress_percent = ($budget_limit > 0) ? min(($total_spent / $budget_limit) * 100, 100) : 0;
 }
 
+// ── Delete trip ───────────────────────────────────────────────────────────────
 if (isset($_POST['delete_trip'])) {
-    if (!$roleController->isLeader($currentUser->user_id, $_POST['delete_trip_id'])) {
-        die("Access Denied");
-    }
-    if ($tripController->delete($_POST['delete_trip_id'], $currentUser->user_id)) {
-        $_SESSION['message'] = "Trip Deleted Successfully";
+    $trip_id_to_delete = $_POST['delete_trip_id'];
+
+    if (!$roleController->isLeader($currentUser->user_id, $trip_id_to_delete)) {
+        $_SESSION['error'] = "Access Denied: You are not the leader of this trip!";
         header("Location: index.php");
         exit;
     }
+
+    $isDeleted = $tripController->delete($trip_id_to_delete, $currentUser->user_id);
+
+    if ($isDeleted !== false) {
+        $_SESSION['message'] = "Trip Deleted Successfully";
+    } else {
+        $_SESSION['error'] = "Failed to delete the trip. Please try again.";
+    }
+    header("Location: index.php");
+    exit;
 }
 
+// ── Edit trip (load form) ────────────────────────────────────────────────────
 $edit_trip = null;
 if (isset($_GET['edit_id'])) {
     $edit_trip = $tripController->getTripById($_GET['edit_id']);
 }
 
+// ── Update trip ───────────────────────────────────────────────────────────────
 if (isset($_POST['update_trip'])) {
     $result = $tripController->update($_POST, $_POST['trip_id'], $currentUser->user_id);
     if ($result) {
         $_SESSION['message'] = "Trip Updated Successfully";
         header("Location: index.php");
         exit;
+    } else {
+        $_SESSION['error'] = "Failed to update the trip. Please try again.";
+        header("Location: index.php");
+        exit;
     }
 }
 
-// Dynamic team snapshot — members of the active trip
+// ── Dynamic team snapshot — members of the active trip ───────────────────────
 $teamMembers = $active_trip_id ? $memberController->getTripMembers($active_trip_id) : [];
 
 // Avatar colour palette (same as members.php)
@@ -120,7 +139,7 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
       </div>
     </div>
 
-    <!-- ── Active trip selector ── -->
+    <!-- ── Active trip selector (interactive dropdown) ── -->
     <div class="sidebar__trip">
       <label class="field-label" for="trip-selector">Active trip</label>
       <select
@@ -231,13 +250,26 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
 
     <div class="content">
 
+      <!-- ── Flash messages (from V2) ──────────────────────────────────────── -->
+      <?php if (isset($_SESSION['message'])): ?>
+        <div style="background:#d1e7dd;color:#0f5132;padding:1rem;border-radius:8px;margin-bottom:1.5rem;border:1px solid #badbcc;">
+          ✅ <?php echo htmlspecialchars($_SESSION['message']); unset($_SESSION['message']); ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if (isset($_SESSION['error'])): ?>
+        <div style="background:#f8d7da;color:#842029;padding:1rem;border-radius:8px;margin-bottom:1.5rem;border:1px solid #f5c2c7;">
+          ⚠️ <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+        </div>
+      <?php endif; ?>
+
       <div class="tabs">
         <button type="button" class="tab is-active">Overview</button>
         <button type="button" class="tab">All trips</button>
         <button type="button" class="tab">Members</button>
       </div>
 
-      <!-- Overview cards -->
+      <!-- ── Overview cards (dynamic from V1) ──────────────────────────────── -->
       <div class="grid grid--3">
         <div class="card card--gradient">
           <div class="card__header">
@@ -288,7 +320,7 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
         </div>
       </div>
 
-      <!-- Quick actions -->
+      <!-- ── Quick actions ──────────────────────────────────────────────────── -->
       <div class="card" style="margin-top:1rem;">
         <div class="card__header"><h3 class="card__title">Quick actions</h3></div>
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
@@ -300,7 +332,7 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
         </div>
       </div>
 
-      <!-- All trips -->
+      <!-- ── All trips (role-gated edit/delete from V1) ────────────────────── -->
       <h2 class="section-title" style="margin-top:2rem;">All trips</h2>
       <div class="grid grid--2">
         <?php if (!empty($trips)): ?>
@@ -330,7 +362,7 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
         <?php endif; ?>
       </div>
 
-      <!-- ── Team snapshot (dynamic) ── -->
+      <!-- ── Team snapshot (dynamic from V1) ──────────────────────────────── -->
       <div style="margin-top:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">
         <h2 class="section-title" style="margin:0;">
           Team snapshot
@@ -369,7 +401,7 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
         <p class="muted">No members found for this trip.</p>
       <?php endif; ?>
 
-      <!-- New / Edit trip form -->
+      <!-- ── New / Edit trip form ───────────────────────────────────────────── -->
       <h2 class="section-title" style="margin-top:2rem;" id="new_trip">
         <?php echo $edit_trip ? "Edit Trip: " . htmlspecialchars($edit_trip['trip_name']) : "New trip form"; ?>
       </h2>
