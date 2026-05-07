@@ -96,16 +96,60 @@ if(isset($_POST['update_trip'])) {
     </div>
     </div>
     <nav class="sidebar__nav" aria-label="Main navigation">
-      <a href="index.php" class="nav-item is-active" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">◉</span> Dashboard</a>
-      <a href="members.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">👥</span> Members</a>
-      <a href="itinerary.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">◎</span> Itinerary</a>
-      <a href="voting.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">◇</span> Voting</a>
-      <a href="rsvp.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">✓</span> RSVP</a>
-      <a href="expenses.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">$</span> Expenses</a>
-      <a href="chat.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">💬</span> Chat</a>
-      <a href="documents.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">📄</span> Documents</a>
-      <a href="checklist.php" class="nav-item " style="text-decoration:none;color:inherit;"><span class="nav-item__icon">☑</span> Checklist</a>
-    </nav>
+    <a href="index.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">◉</span> Dashboard
+    </a>
+
+    <a href="members.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'members.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">👥</span> Members
+    </a>
+
+    <a href="itinerary.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'itinerary.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">◎</span> Itinerary
+    </a>
+
+    <a href="voting.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'voting.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">◇</span> Voting
+    </a>
+
+    <a href="rsvp.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'rsvp.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">✓</span> RSVP
+    </a>
+
+    <a href="expenses.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'expenses.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">$</span> Expenses
+    </a>
+
+    <a href="chat.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'chat.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">💬</span> Chat
+    </a>
+
+    <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'documents.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">📄</span> Documents
+    </a>
+
+    <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>" 
+       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'checklist.php') ? 'is-active' : ''; ?>" 
+       style="text-decoration:none;color:inherit;">
+       <span class="nav-item__icon">☑</span> Checklist
+    </a>
+</nav>
     <div class="sidebar__footer">
       <div class="user-chip">
         <span class="avatar avatar--sm" style="background:#6366f1">A</span>
