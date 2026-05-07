@@ -1,15 +1,16 @@
 <?php
 
 require_once __DIR__ . '/../model/trip.php';
+require_once __DIR__ . '/DBController.php';
+require_once __DIR__ . '/RoleController.php';
 
 class TripController {
 
     private $db;
 
+    // إضافة رحلة جديدة
     public function addTrip($data, $user_id) {
-
         $trip = new Trip();
-
         $trip->trip_name = $data['trip_name'];
         $trip->description = $data['description'];
         $trip->start_date = $data['start_date'];
@@ -18,20 +19,37 @@ class TripController {
         $trip->base_currency = $data['base_currency'];
         $trip->created_by = $user_id;
 
-        return $trip->createTrip();
+        $trip_id = $trip->createTrip(); 
+
+        if ($trip_id && is_numeric($trip_id)) {
+            $this->db = new DBController();
+            if($this->db->openConnection()) {
+                $query = "INSERT INTO roles (user_id, trip_id, role, assigned_at) 
+                          VALUES ($user_id, $trip_id, 'leader', NOW())
+                          ON DUPLICATE KEY UPDATE role = 'leader'";
+                $this->db->insert($query);
+                $this->db->closeConnection();
+            }
+            return $trip_id;
+        }
+        return false;
     }
 
-    public function delete($trip_id) {
-        $trip = new Trip();
-        return $trip->deleteTrip($trip_id);
-    }
-
+    // الفنكشن اللي كانت ناقصة ومسببة الـ Error
     public function getTripById($id) {
         $trip = new Trip();
         return $trip->getTripById($id);
     }
 
-    public function update($data, $trip_id) {
+    // تحديث الرحلة
+    public function update($data, $trip_id, $user_id) {
+        $roleController = new RoleController();
+
+        // حماية: التأكد إن اللي بيعدل هو القائد
+        if(!$roleController->isLeader($user_id, $trip_id)) {
+            die("Unauthorized Action: You are not the leader.");
+        }
+
         $trip = new Trip();
         $trip->trip_name = $data['trip_name'];
         $trip->description = $data['description'];
@@ -43,19 +61,27 @@ class TripController {
         return $trip->updateTrip($trip_id);
     }
 
-    public function getAllTrips($user_id) {
-        $this->db = new DBController();
+    // حذف الرحلة
+    public function delete($trip_id, $user_id) {
+        $roleController = new RoleController();
 
-        if(!$this->db->openConnection()) {
-            return false;
+        if(!$roleController->isLeader($user_id, $trip_id)) {
+            die("Access Denied: You are not the leader.");
         }
 
+        $trip = new Trip();
+        return $trip->deleteTrip($trip_id);
+    }
+
+    // جلب كل الرحلات للمستخدم
+    public function getAllTrips($user_id) {
+        $this->db = new DBController();
+        if(!$this->db->openConnection()) return false;
+
         $query = "SELECT * FROM trip WHERE created_by = $user_id ORDER BY start_date DESC";
-        
         $result = $this->db->select($query);
         $this->db->closeConnection();
         
         return $result;
     }
 }
-?>

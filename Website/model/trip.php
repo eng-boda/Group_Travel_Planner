@@ -19,34 +19,25 @@ class Trip {
         $this->db = new DBController();
     }
 
-    public function createTrip() {
+   public function createTrip() {
+    if(!$this->db->openConnection()) return false;
 
-        if(!$this->db->openConnection()) {
-            return false;
-        }
+    $name = mysqli_real_escape_string($this->db->connection, $this->trip_name);
+    $desc = mysqli_real_escape_string($this->db->connection, $this->description);
 
-       $query = "
-INSERT INTO trip
-(trip_name, trip_description, start_date, end_date, budget, base_currency, created_by)
-VALUES
-(
-    '$this->trip_name',
-    '$this->description',
-    '$this->start_date',
-    '$this->end_date',
-    '$this->budget',
-    '$this->base_currency',
-    '$this->created_by'
-)
-";
+    $query = "INSERT INTO trip (trip_name, trip_description, start_date, end_date, budget, base_currency, created_by)
+              VALUES ('$name', '$desc', '$this->start_date', '$this->end_date', '$this->budget', '$this->base_currency', '$this->created_by')";
 
-        $result = $this->db->insert($query);
-
+    $result = $this->db->insert($query);
+    
+    if ($result) {
+        $new_id = mysqli_insert_id($this->db->connection);
         $this->db->closeConnection();
-
-        return $result;
+        return $new_id; 
     }
-
+    $this->db->closeConnection();
+    return false;
+}
     public function deleteTrip($trip_id) {
         if(!$this->db->openConnection()) {
             return false;

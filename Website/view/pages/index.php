@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
 require_once __DIR__ . '/../../controller/TripController.php';
+require_once __DIR__ . '/../../controller/RoleController.php';
+
+$roleController = new RoleController();
 
 $auth = new AuthController();
 if (!$auth->isLoggedIn()) {
@@ -42,7 +45,12 @@ if ($active_trip_id) {
 }
 
 if(isset($_POST['delete_trip'])) {
-    if($tripController->delete($_POST['delete_trip_id'])) {
+
+    if(!$roleController->isLeader($currentUser->user_id, $_POST['delete_trip_id'])) {
+        die("Access Denied");
+    }
+
+    if($tripController->delete($_POST['delete_trip_id'], $currentUser->user_id)) {
         $_SESSION['message'] = "Trip Deleted Successfully";
         header("Location: index.php");
         exit;
@@ -55,7 +63,9 @@ if(isset($_GET['edit_id'])) {
 }
 
 if(isset($_POST['update_trip'])) {
-    $result = $tripController->update($_POST, $_POST['trip_id']);
+    // التعديل هنا: ضفنا $currentUser->user_id كباراميتر ثالث
+    $result = $tripController->update($_POST, $_POST['trip_id'], $currentUser->user_id);
+
     if($result) {
         $_SESSION['message'] = "Trip Updated Successfully";
         header("Location: index.php");
@@ -173,14 +183,24 @@ if(isset($_POST['update_trip'])) {
       <div class="topbar__actions">
     <a href="index.php#new_trip" class="btn btn--primary" style="text-decoration:none;">+ New trip</a>
 
-    <?php if ($active_trip_id): ?>
-            <a href="index.php?edit_id=<?php echo $active_trip_id; ?>#new_trip" class="btn btn--secondary" style="text-decoration:none;">Edit trip</a>
+    <?php if ($active_trip_id && $roleController->isLeader($currentUser->user_id, $active_trip_id)): ?>
+    
+    <a href="index.php?edit_id=<?php echo $active_trip_id; ?>#new_trip" 
+       class="btn btn--secondary" 
+       style="text-decoration:none;">
+       Edit trip
+    </a>
 
-            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete the active trip?');">
-                <input type="hidden" name="delete_trip_id" value="<?php echo $active_trip_id; ?>">
-                <button type="submit" name="delete_trip" class="btn btn--danger">Delete</button>
-            </form>
-        <?php endif; ?>
+    <form method="POST" style="display:inline;" 
+          onsubmit="return confirm('Are you sure you want to delete the active trip?');">
+        
+        <input type="hidden" name="delete_trip_id" value="<?php echo $active_trip_id; ?>">
+        <button type="submit" name="delete_trip" class="btn btn--danger">
+            Delete
+        </button>
+    </form>
+
+<?php endif; ?>
     </div>
     </header>
     <div class="content">
