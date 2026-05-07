@@ -1,18 +1,24 @@
 <?php
-header('Content-Type: application/json');
-require_once '../model/activity.php';
 
-$activityModel = new activity();
+require_once __DIR__ . '/../model/activity.php';
 
-// بنفترض إن الـ trip_id مبعوت في الـ URL
-if (isset($_GET['trip_id'])) {
-    $tripId = intval($_GET['trip_id']);
-    $list = $activityModel->getActivitiesByTrip($tripId);
+class ItineraryController {
 
-    if ($list) {
-        echo json_encode(["success" => true, "activities" => $list]);
-    } else {
-        echo json_encode(["success" => false, "activities" => []]);
-    }
+   public function addActivity($data) {
+
+    $activity = new Activity();
+
+    $activity->trip_id = $data['trip_id'];
+    $activity->title = $data['title'];
+
+    $activity->activity_location = $data['location']; // FIX
+
+   
+    $activity->type = $data['type'];
+    $activity->activity_state = $data['activity_state'];
+    $activity->activity_date = $data['activity_date'];
+
+    return $activity->createActivity();
+}
 }
 ?>

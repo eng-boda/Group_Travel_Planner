@@ -1,10 +1,24 @@
 <?php
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
+require_once __DIR__ . '/../../controller/ItineraryController.php';
 
 $auth = new AuthController();
 
 $currentUser = $auth->getCurrentUser();
+if(isset($_POST['add_activity'])) {
+
+    $activityController = new ItineraryController();
+
+    $result = $activityController->addActivity($_POST);
+
+    if($result){
+        echo "<script>alert('Activity Added Successfully')</script>";
+    }
+    else{
+        echo "<script>alert('Failed To Add Activity')</script>";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,15 +79,107 @@ $currentUser = $auth->getCurrentUser();
 <div class="card" style="margin-bottom:0.75rem;"><h3 class="card__title">Day 2</h3><ul class="list-plain"><li><strong>Beach Day</strong> — 10:00 · Sunny Beach</li><li><strong>Sunset Cruise</strong> — 17:00 · Harbor Marina</li></ul></div>
 <div class="card" style="margin-bottom:0.75rem;"><h3 class="card__title">Day 3</h3><ul class="list-plain"><li><strong>Checkout &amp; Airport</strong> — 08:00 · Hotel Lobby</li></ul></div>
 <h2 class="section-title" style="margin-top:2rem;">New activity form</h2>
-<div class="card"><div class="form-grid">
-<div class="form-row"><label>Title</label><input class="input" value="Guided Tour" /></div>
-<div class="form-row"><label>Time</label><input type="time" class="input" value="10:00" /></div>
-<div class="form-row"><label>Location</label><input class="input" value="Old Town" /></div>
-<div class="form-row"><label>Notes</label><textarea class="textarea">Bring comfortable shoes</textarea></div>
-<div class="form-row"><label>Activity type</label><select class="input"><option>Indoor</option><option selected>Outdoor</option></select></div>
-<div class="form-row"><label>Status</label><select class="input"><option>Draft</option><option selected>Confirmed</option></select></div>
-<div class="form-row"><label>Attach document</label><select class="input"><option value="">— None —</option><option>boarding-pass.pdf</option></select></div>
-<div style="display:flex;gap:0.5rem;justify-content:flex-end;"><button type="button" class="btn btn--secondary">Cancel</button><button type="button" class="btn btn--primary">Add activity</button></div>
+
+<form method="POST" class="card">
+
+<div class="form-grid">
+
+<input
+  type="hidden"
+  name="trip_id"
+  value="1"
+/>
+
+<div class="form-row">
+<label>Title</label>
+
+<input
+  name="title"
+  class="input"
+  value="Guided Tour"
+/>
+</div>
+
+<div class="form-row">
+<label>Date</label>
+
+<input
+  type="date"
+  name="activity_date"
+  class="input"
+/>
+</div>
+
+<div class="form-row">
+<label>Time</label>
+
+<input
+  type="time"
+  name="activity_time"
+  class="input"
+  value="10:00"
+/>
+</div>
+
+<div class="form-row">
+<label>Location</label>
+
+<input
+  name="location"
+  class="input"
+  value="Old Town"
+/>
+</div>
+
+
+
+<div class="form-row">
+<label>Activity type</label>
+
+<select
+  name="type"
+  class="input"
+>
+  <option>Indoor</option>
+  <option selected>Outdoor</option>
+</select>
+
+</div>
+
+<div class="form-row">
+<label>Status</label>
+
+<select
+  name="activity_state"
+  class="input"
+>
+  <option>Draft</option>
+  <option selected>Confirmed</option>
+</select>
+
+</div>
+
+<div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+
+<button
+  type="button"
+  class="btn btn--secondary"
+>
+Cancel
+</button>
+
+<button
+  type="submit"
+  name="add_activity"
+  class="btn btn--primary"
+>
+Add activity
+</button>
+
+</div>
+
+</div>
+</form>
 </div></div>
     </div></main></div>
 <div id="modal-root" class="modal-root" aria-live="polite"></div>
