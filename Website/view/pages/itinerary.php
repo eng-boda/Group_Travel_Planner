@@ -219,6 +219,14 @@ if (isset($_GET['edit_activity_id'])) {
                       <p class="muted" style="margin: 0;">
                           🏷️ <strong>Type:</strong> <span class="tag"><?php echo htmlspecialchars($a['type']); ?></span>
                       </p>
+                      <div 
+    class="weather-box muted"
+    id="weather-<?php echo $a['activity_id']; ?>"
+    data-city="<?php echo htmlspecialchars($a['activity_location']); ?>"
+    data-type="<?php echo htmlspecialchars($a['type']); ?>"
+>
+    Loading weather...
+</div>
                   </div>
 
                   <div style="margin-top:1rem; display:flex; gap:0.4rem;">
@@ -460,6 +468,82 @@ function handleCountryInput(val) {
 }
 
 document.addEventListener('DOMContentLoaded', initLocationSystem);
+
+
+
+async function loadWeather() {
+    const weatherBoxes = document.querySelectorAll('.weather-box');
+    const WEATHER_API_KEY = "fdf2253c990ec46dd850df982fc6e7cd";
+
+    // دالة مساعدة لتحويل الأيقونة لإيموجي (كانت مفقودة)
+    function getWeatherEmoji(iconCode) {
+        const mapping = {
+            '01': '☀️', '02': '⛅', '03': '☁️', '04': '☁️',
+            '09': '🌧️', '10': '🌦️', '11': '⛈️', '13': '❄️', '50': '🌫️'
+        };
+        return mapping[iconCode.substring(0, 2)] || '🌡️';
+    }
+
+    for (const box of weatherBoxes) {
+        const city = box.dataset.city;
+        const current_activity_type = box.dataset.type?.toLowerCase(); // تم تعديل الاسم هنا للوضوح
+        if (!city) continue;
+
+        try {
+            const response = await fetch(
+                `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${WEATHER_API_KEY}&units=metric&lang=en`
+            );
+            const data = await response.json();
+
+            if (data.cod === 200) {
+                const temp = Math.round(data.main.temp);
+                const desc = data.weather[0].description;
+                const weatherId = data.weather[0].id;
+                const iconCode = data.weather[0].icon;
+                const emoji = getWeatherEmoji(iconCode);
+
+                box.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:0.6rem; margin-top: 0.5rem; color: #4b5563;">
+                        <span style="font-size: 1.1rem; width: 20px; text-align: center;">${emoji}</span>
+                        <span style="font-size: 0.95rem;">${temp}°C · ${desc}</span>
+                    </div>
+                `;
+
+                // تصحيح الشرط: استخدام current_activity_type بدلاً من type
+                if (current_activity_type === 'outdoor' && weatherId < 700) {
+                    showWeatherWarning(city, desc, box);
+                }
+            } else {
+                box.innerHTML = `<span style="font-size:0.8rem; color:red;">City not found</span>`;
+            }
+        } catch (error) {
+            box.innerHTML = `<span style="font-size:0.8rem; color:red;">Offline</span>`;
+        }
+    }
+}
+
+function showWeatherWarning(city, condition, element) {
+    const warningDiv = document.createElement('div');
+    warningDiv.style = `
+        background: #fff5f5;
+        border-left: 4px solid #f56565;
+        color: #c53030;
+        padding: 6px;
+        margin-top: 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    `;
+    warningDiv.innerHTML = `⚠️ <b>Warning:</b> Bad weather for outdoor activity!`;
+    element.appendChild(warningDiv);
+}
+
+// استدعاء الدالة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    initLocationSystem();
+    loadWeather(); // أضف هذا السطر هنا
+});
+
+
 </script>
 
 </html>
