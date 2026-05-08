@@ -4,7 +4,7 @@ require_once __DIR__ . '/../model/noncash.php';
 
 class NonCashController
 {
-    public function addNonCash($data, $file, $user_id)
+    public function addNonCash($data)
     {
         $nonCash = new NonCash();
 

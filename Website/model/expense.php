@@ -26,79 +26,63 @@ class expense
             error_log("Database connection failed in createExpense");
             return false;
         }
+        $query = "
+    INSERT INTO expense
+    (
+        trip_id,
+        category_id,
+        original_currency,
+        description, 
+        original_amount, 
+        converted_amount, 
+        uploaded_by
+    )   
+    VALUES
+    (
+        '$this->trip_id',
+        '$this->category_id',
+        '$this->original_currency',
+        '$this->description',
+        '$this->original_amount',
+        '$this->converted_amount',
+        '$this->uploaded_by'
+    )
+    ";
+    $result = $this->db->insert($query);
 
-        $query = "INSERT INTO expense 
-        (trip_id, category_id, original_currency, description, original_amount, converted_amount, uploaded_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $this->db->closeConnection();
 
-        $stmt = $this->db->connection->prepare($query);
+    return $result;
+}
 
-        if (!$stmt) {
-            error_log("Statement preparation failed: " . $this->db->connection->error);
-            $this->db->closeConnection();
-            return false;
-        }
+    public function getExpensesByTrip($trip_id) {
 
-        // Variables in SAME ORDER as the query
-        $trip_id = (int)$this->trip_id;
-        $category_id = (int)$this->category_id;
-        $currency = (string)$this->original_currency;
-        $description = (string)$this->description;
-        $original_amount = (float)$this->original_amount;
-        $converted_amount = (float)$this->converted_amount;
-        $uploaded_by = (int)$this->uploaded_by;
-
-        // bind_param types MUST match the ORDER in the INSERT query
-        // Query order: trip_id(i), category_id(i), original_currency(s), description(s), original_amount(d), converted_amount(d), uploaded_by(i)
-        if (!$stmt->bind_param("iissddi", $trip_id, $category_id, $currency, $description, $original_amount, $converted_amount, $uploaded_by)) {
-            error_log("Bind param failed: " . $stmt->error);
-            $stmt->close();
-            $this->db->closeConnection();
-            return false;
-        }
-
-        // Execute and check for errors
-        if ($stmt->execute()) {
-            $newId = $this->db->connection->insert_id;
-            $stmt->close();
-            $this->db->closeConnection();
-            return $newId;
-        }
-
-        error_log("Statement execution failed: " . $stmt->error);
-        $stmt->close();
-        $this->db->closeConnection();
-        return false;
-    }
-
-    public function getExpensesByTrip($trip_id)
-{
-    $this->db->openConnection();
-
-    $query = "SELECT * FROM expense WHERE trip_id = ?";
-
-    $stmt = $this->db->connection->prepare($query);
-
-    if (!$stmt) {
+    if(!$this->db->openConnection()) {
         return [];
     }
 
-    $stmt->bind_param("i", $trip_id);
-    $stmt->execute();
+    $query = "SELECT * FROM expense WHERE trip_id = $trip_id ORDER BY created_at DESC";
 
-    $result = $stmt->get_result();
+    $result = $this->db->select($query);
 
-    $expenses = [];
-
-    if ($result) {
-        $expenses = $result->fetch_all(MYSQLI_ASSOC);
-    }
-
-    $stmt->close();
     $this->db->closeConnection();
 
-    return $expenses;
+    return $result;
 }
+
+public function getExpense($id) {
+    if(!$this->db->openConnection()) return false;
+    $query = "SELECT * FROM expense WHERE expense_id = $id";
+    $result = $this->db->select($query);
+    $this->db->closeConnection();
+    return $result ? $result[0] : null;
+}
+
+
+
+
+
+
 
     public function addExpense($expenseData, $splits)
     {

@@ -5,7 +5,7 @@ require_once __DIR__ . '/../controller/DBController.php';
 
 class ExpenseController
 {
-    public function addExpense($data, $user_id)
+    public function addExpense($data)
     {
         // Validate required fields
         $required_fields = ['trip_id', 'description', 'original_amount', 'original_currency', 'category_id'];
@@ -30,7 +30,7 @@ class ExpenseController
         }
 
         // Validate IDs are positive
-        if ($trip_id <= 0 || $category_id <= 0 || $user_id <= 0) {
+        if ($trip_id <= 0 || $category_id <= 0) {
             error_log("Invalid IDs in addExpense: trip=" . $trip_id . ", category=" . $category_id . ", user=" . $user_id);
             return false;
         }
@@ -113,17 +113,22 @@ class ExpenseController
         }
     }
 
+    
     public function getExpenses($trip_id)
     {
         try {
             $expense = new expense();
-            $expenses = $expense->getExpensesByTrip($trip_id);
-            return is_array($expenses) ? $expenses : [];
+
+            $result = $expense->getExpensesByTrip($trip_id);
+
+            return is_array($result) ? $result : [];
+
         } catch (Exception $e) {
             error_log("Exception in getExpenses: " . $e->getMessage());
             return [];
         }
     }
+    
     /* Inside ExpenseController.php */
 
 public function addNonCashContribution($data, $user_id) {

@@ -8,8 +8,8 @@ require_once __DIR__ . '/../../controller/TripController.php';
 require_once __DIR__ . '/../../controller/NonCashController.php';
 
 $auth = new AuthController();
-
 $currentUser = $auth->getCurrentUser();
+$user_id = $currentUser->user_id;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense']) && $currentUser) {
   $expenseController = new ExpenseController();
@@ -52,23 +52,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_noncash']) && $cu
 
     exit();
 }
-$tripController = new TripController();
+
+    $tripController = new TripController();
 $trips = $tripController->getAllTrips($currentUser->user_id);
 
-$activeTripId = isset($_GET['trip_id'])
-    ? (int)$_GET['trip_id']
+$active_trip_id = isset($_GET['trip_id']) 
+    ? (int)$_GET['trip_id'] 
     : ($trips[0]['trip_id'] ?? null);
 
 $expenseController = new ExpenseController();
-$expenses = $activeTripId
-    ? $expenseController->getExpenses($activeTripId)
+// Use ONE consistent name: $activeTripId
+$activeTripId = $_GET['trip_id'] ?? null; 
+
+$expenses = $activeTripId 
+    ? $expenseController->getExpenses($activeTripId) // Changed from $active_trip_id
     : [];
 
 $nonCashController = new NonCashController();
-
 $nonCashContributions = $activeTripId
     ? $nonCashController->getNonCash($activeTripId)
     : [];    
+
 $activeTrip = null;
 if ($activeTripId) {
     foreach ($trips as $t) {
@@ -233,18 +237,13 @@ if ($activeTripId) {
 <label>Trip</label>
 
 <select name="trip_id" class="input" required>
-
-<?php foreach ($trips as $trip): ?>
-
-<option value="<?php echo $trip['trip_id']; ?>"
-    <?php echo ($trip['trip_id'] == $activeTripId) ? 'selected' : ''; ?>>
-
-    <?php echo htmlspecialchars($trip['trip_name']); ?>
-
-</option>
-
-<?php endforeach; ?>
-
+    <option value="" disabled selected>Choose trip...</option>
+    <?php foreach ($trips as $trip): ?>
+    <option value="<?php echo $trip['trip_id']; ?>"
+        <?php echo ($trip['trip_id'] == $activeTripId) ? 'selected' : ''; ?>>
+        <?php echo htmlspecialchars($trip['trip_name']); ?>
+    </option>
+    <?php endforeach; ?>
 </select>
 </div>
 <div class="form-row"><label>Description</label><input name="description" class="input" value="" required /></div>
@@ -308,7 +307,7 @@ if ($activeTripId) {
 
     <?php echo htmlspecialchars($trip['trip_name']); ?>
 
-</option>
+</option> 
 
 <?php endforeach; ?>
 </select>
