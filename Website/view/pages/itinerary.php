@@ -15,12 +15,20 @@ $active_trip_id = isset($_GET['trip_id']) ? $_GET['trip_id'] : ($trips[0]['trip_
 
 $activityController = new ItineraryController();
 
+$conflict_data = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_activity'])) {
-        $activityController->addActivity($_POST);
+        $result = $activityController->addActivity($_POST);
+        if (is_array($result) && isset($result['has_conflict'])) {
+            $conflict_data = $result;
+        }
     } 
     elseif (isset($_POST['update_activity'])) {
-        $activityController->updateActivity($_POST);
+        $result = $activityController->updateActivity($_POST);
+        if (is_array($result) && isset($result['has_conflict'])) {
+            $conflict_data = $result;
+        }
     } 
     elseif (isset($_POST['delete_activity'])) {
         $activityController->deleteActivity($_POST['delete_activity_id'], $active_trip_id);
@@ -146,6 +154,38 @@ if (isset($_GET['edit_activity_id'])) {
       <div class="topbar__actions"><a href="#activity_form" class="btn btn--primary" style="text-decoration:none;">+ Add Activity</a></div>
     </header>
     <div class="content">
+
+    <?php if ($conflict_data): ?>
+    <div class="card" style="border: 2px solid #f59e0b; background: #fffbeb; margin-bottom: 1.5rem; padding: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <span style="font-size: 1.25rem;">⚠️</span>
+            <div>
+                <h4 style="margin: 0; color: #b45309; font-size: 1rem;">Timing Conflict!</h4>
+                <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: #92400e;">
+                    This activity is very close to <strong>"<?php echo htmlspecialchars($conflict_data['existing_title']); ?>"</strong> 
+                    (Difference: <?php echo round($conflict_data['diff']); ?> mins).
+                </p>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <form method="POST">
+                <?php foreach ($_POST as $key => $val): ?>
+                    <input type="hidden" name="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($val); ?>">
+                <?php endforeach; ?>
+                <input type="hidden" name="ignore_conflict" value="1">
+                <button type="submit" name="<?php echo isset($_POST['add_activity']) ? 'add_activity' : 'update_activity'; ?>" 
+                        class="btn btn--sm" style="background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; cursor: pointer;">
+                    Ignore & Save Anyway
+                </button>
+            </form>
+
+            <button type="button" class="btn btn--sm btn--primary" onclick="document.getElementById('a-time').focus(); this.closest('.card').remove();">
+                Edit Time
+            </button>
+        </div>
+    </div>
+<?php endif; ?>
 
 
 <!-- <div class="tabs"><button type="button" class="tab is-active">Board</button><button type="button" class="tab">Compact list</button></div> -->
@@ -283,62 +323,83 @@ if ($activeTrip) {
         <div class="form-row">
             <label for="a-title">Activity Title</label>
             <input id="a-title" name="title" class="input" 
-                   value="<?php echo $edit_activity ? htmlspecialchars($edit_activity['title']) : ''; ?>" 
+                   value="<?php echo isset($_POST['title']) ? htmlspecialchars($_POST['title']) : ($edit_activity ? htmlspecialchars($edit_activity['title']) : ''); ?>" 
                    placeholder="e.g., Eiffel Tower Visit" required />
         </div>
 
-        <!-- <div class="form-row">
-            <label for="a-date">Date</label>
+        <div class="form-row">
+            <label for="a-date">Activity Date</label>
             <input 
                 id="a-date" 
                 type="date" 
                 name="activity_date" 
-                class="input" 
-                value="<?php echo ($edit_activity && !empty($edit_activity['activity_date'])) ? date('Y-m-d', strtotime($edit_activity['activity_date'])) : ''; ?>" 
+                class="input"
+                min="<?php echo $activeTrip['start_date']; ?>"
+                max="<?php echo $activeTrip['end_date']; ?>"
+                value="<?php 
+                    if(isset($_POST['activity_date'])) {
+                        echo $_POST['activity_date'];
+                    } elseif($edit_activity && !empty($edit_activity['activity_date'])) {
+                        echo date('Y-m-d', strtotime($edit_activity['activity_date'])); 
+                    } else {
+                        echo '';
+                    }
+                ?>" 
                 required 
             />
-        </div> -->
-
-        <div class="form-row">
-        <label for="a-date">Activity Date</label>
-        <input 
-            id="a-date" 
-            type="date" 
-            name="activity_date" 
-            class="input"
-            min="<?php echo $activeTrip['start_date']; ?>"
-            max="<?php echo $activeTrip['end_date']; ?>"
-            value="<?php echo ($edit_activity && !empty($edit_activity['activity_date'])) ? date('Y-m-d', strtotime($edit_activity['activity_date'])) : ''; ?>" 
-            required 
-          />
-         </div>
+        </div>
 
         <div class="form-row">
             <label for="a-time">Time</label>
             <input id="a-time" type="time" name="activity_time" class="input" 
-                   value="<?php echo $edit_activity ? $edit_activity['activity_time'] : ''; ?>" required />
+                   value="<?php echo isset($_POST['activity_time']) ? $_POST['activity_time'] : ($edit_activity ? $edit_activity['activity_time'] : ''); ?>" required />
         </div>
 
         <div class="form-row">
-            <label for="a-loc">Location</label>
-            <input id="a-loc" name="location" class="input" 
-                   value="<?php echo $edit_activity ? htmlspecialchars($edit_activity['activity_location']) : ''; ?>" 
-                   placeholder="Enter activity location..." required />
+            <label for="country-input">Country</label>
+            <input 
+                id="country-input" 
+                list="countries-list" 
+                class="input" 
+                placeholder="Type to search country..." 
+                oninput="handleCountryInput(this.value)"
+                autocomplete="off"
+            />
+            <datalist id="countries-list">
+                </datalist>
+        </div>
+
+        <div class="form-row">
+            <label for="a-loc">City / Governorate</label>
+            <input 
+                id="a-loc" 
+                name="location" 
+                list="cities-list" 
+                class="input" 
+                placeholder="Type to search city..." 
+                value="<?php echo isset($_POST['location']) ? htmlspecialchars($_POST['location']) : ($edit_activity ? htmlspecialchars($edit_activity['activity_location']) : ''); ?>"
+                required 
+                autocomplete="off"
+            />
+            <datalist id="cities-list">
+                </datalist>
         </div>
 
         <div class="form-row">
             <label for="a-type">Activity Type</label>
             <select id="a-type" name="type" class="input">
-                <option value="Indoor" <?php echo ($edit_activity && $edit_activity['type'] == 'Indoor') ? 'selected' : ''; ?>>Indoor</option>
-                <option value="Outdoor" <?php echo ($edit_activity && $edit_activity['type'] == 'Outdoor') ? 'selected' : ''; ?>>Outdoor</option>
+                <?php $currentType = isset($_POST['type']) ? $_POST['type'] : ($edit_activity ? $edit_activity['type'] : ''); ?>
+                <option value="Indoor" <?php echo ($currentType == 'Indoor') ? 'selected' : ''; ?>>Indoor</option>
+                <option value="Outdoor" <?php echo ($currentType == 'Outdoor') ? 'selected' : ''; ?>>Outdoor</option>
             </select>
         </div>
 
         <div class="form-row">
             <label for="a-status">Status</label>
             <select id="a-status" name="activity_state" class="input">
-              <option value="Confirmed" <?php echo ($edit_activity && $edit_activity['activity_state'] == 'Confirmed') ? 'selected' : ''; ?>>Confirmed</option>
-              <option value="Draft" <?php echo ($edit_activity && $edit_activity['activity_state'] == 'Draft') ? 'selected' : ''; ?>>Draft</option>
+                <?php $currentState = isset($_POST['activity_state']) ? $_POST['activity_state'] : ($edit_activity ? $edit_activity['activity_state'] : 'Confirmed'); ?>
+                <option value="Confirmed" <?php echo ($currentState == 'Confirmed') ? 'selected' : ''; ?>>Confirmed</option>
+                <option value="Draft" <?php echo ($currentState == 'Draft') ? 'selected' : ''; ?>>Draft</option>
             </select>
         </div>
 
@@ -356,4 +417,49 @@ if ($activeTrip) {
     </div></main></div>
 <div id="modal-root" class="modal-root" aria-live="polite"></div>
 <div id="toast-root" class="toast-root"></div>
-</body></html>
+</body>
+
+<script>
+let locationData = {};
+
+async function initLocationSystem() {
+    try {
+        const response = await fetch('countries.json'); 
+        locationData = await response.json();
+        
+        const countryDataList = document.getElementById('countries-list');
+        const countries = Object.keys(locationData).sort();
+        
+        countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            countryDataList.appendChild(option);
+        });
+        
+        console.log("JSON Data Loaded for Countries & Cities!");
+    } catch (error) {
+        console.error("Failed to load countries.json:", error);
+    }
+}
+
+function handleCountryInput(val) {
+    const cityDataList = document.getElementById('cities-list');
+    const cityInput = document.getElementById('a-loc');
+    
+    if (locationData[val]) {
+        cityDataList.innerHTML = '';
+        
+        locationData[val].sort().forEach(city => {
+            const option = document.createElement('option');
+            option.value = city;
+            cityDataList.appendChild(option);
+        });
+    } else {
+        cityDataList.innerHTML = '';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initLocationSystem);
+</script>
+
+</html>
