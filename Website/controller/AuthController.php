@@ -31,7 +31,7 @@ class AuthController
 
         $_SESSION['userId']   = $result[0]['user_id'];
         $_SESSION['userName'] = $result[0]['name'];
-        $_SESSION['userRole'] = $result[0]['role'] ?? 'Client';
+        $_SESSION['userRole'] = 'Client';;
         return true;
     }
 
@@ -65,7 +65,8 @@ class AuthController
             return ['success' => false, 'message' => 'An account with this email already exists.'];
         }
 
-        $query  = "INSERT INTO users (name, email, password, role) VALUES ('$name', '$email', '$password', 'Client')";
+        $query = "INSERT INTO users (name, email, password)
+VALUES ('$name', '$email', '$password')";
         $result = $this->db->insert($query);
         $this->db->closeConnection();
 

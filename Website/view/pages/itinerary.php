@@ -8,32 +8,24 @@ require_once __DIR__ . '/../../controller/TripController.php';
 
 $auth = new AuthController();
 $currentUser = $auth->getCurrentUser();
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_activity'])) {
-    $activityController = new ItineraryController();
-    $result = $activityController->addActivity($_POST);
-
-    if ($result) {
-      $_SESSION['success_msg'] = "Activity Added Successfully";
-        header("Location: itinerary.php?added=1");
-        exit(); 
-    }
-}
-
-$activityController = new ItineraryController();
-$activities = $activityController->getActivities(1);
-$grouped = [];
-
-if ($activities) {
-    foreach ($activities as $act) {
-        $grouped[$act['activity_date']][] = $act;
-    }
-}
 
 $tripController = new TripController();
-
 $trips = $tripController->getAllTrips($currentUser->user_id);
-
 $active_trip_id = isset($_GET['trip_id']) ? $_GET['trip_id'] : ($trips[0]['trip_id'] ?? null);
+
+$activityController = new ItineraryController();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['add_activity'])) {
+        $activityController->addActivity($_POST);
+    } 
+    elseif (isset($_POST['update_activity'])) {
+        $activityController->updateActivity($_POST);
+    } 
+    elseif (isset($_POST['delete_activity'])) {
+        $activityController->deleteActivity($_POST['delete_activity_id'], $active_trip_id);
+    }
+}
 
 $activeTrip = null;
 if ($active_trip_id) {
@@ -45,6 +37,19 @@ if ($active_trip_id) {
     }
 }
 
+$activities = $active_trip_id ? $activityController->getActivities($active_trip_id) : [];
+$grouped = [];
+if ($activities) {
+    foreach ($activities as $act) {
+        $cleanDate = date('Y-m-d', strtotime($act['activity_date'])); 
+        $grouped[$cleanDate][] = $act;
+    }
+}
+
+$edit_activity = null;
+if (isset($_GET['edit_activity_id'])) {
+    $edit_activity = $activityController->getActivityById($_GET['edit_activity_id']);
+}
 ?>
 <?php if(isset($_SESSION['success_msg'])): ?>
     <script>
@@ -131,149 +136,221 @@ if ($active_trip_id) {
        <span class="nav-item__icon">☑</span> Checklist
     </a>
 </nav>
-    <div class="sidebar__footer"><div class="user-chip"><span class="avatar avatar--sm" style="background:#6366f1">A</span><div><div class="user-chip__name"><?php echo $currentUser->name ?></div><div class="user-chip__role">Organizer on this trip</div></div></div><a href="../Auth/logout.php" class="btn btn--ghost btn--sm" style="width:100%;margin-top:0.5rem;text-align:center;text-decoration:none;">Log out</a></div>
+    <div class="sidebar__footer"><div class="user-chip"><span class="avatar avatar--sm" style="background:#6366f1"><?php echo ucfirst($currentUser->name[0]) ?></span><div><div class="user-chip__name"><?php echo $currentUser->name ?></div><div class="user-chip__role">Organizer on this trip</div></div></div><a href="../Auth/logout.php" class="btn btn--ghost btn--sm" style="width:100%;margin-top:0.5rem;text-align:center;text-decoration:none;">Log out</a></div>
   </aside>
   <div class="sidebar-backdrop" aria-hidden="true"></div>
   <main class="main">
     <header class="topbar">
       <button type="button" class="btn btn--icon mobile-only" aria-label="Open menu">☰</button>
       <div class="topbar__titles"><p class="eyebrow">Planning</p><h1 class="topbar__title">Itinerary</h1><p class="muted topbar__session" style="margin:0.35rem 0 0;font-size:0.85rem;">Signed in as <?php echo $currentUser->name ?></p></div>
-      <div class="topbar__actions"><button type="button" class="btn btn--secondary">+ Add day</button> <button type="button" class="btn btn--primary">+ Add activity</button></div>
+      <div class="topbar__actions"><a href="#activity_form" class="btn btn--primary" style="text-decoration:none;">+ Add Activity</a></div>
     </header>
     <div class="content">
 
 
-<div class="tabs"><button type="button" class="tab is-active">Board</button><button type="button" class="tab">Compact list</button></div>
-<div class="day-board"> <?php foreach ($grouped as $date => $acts): ?>
-        <div class="day-column"> <div class="day-column__head">
-                <span class="day-column__label">Day: <?= $date ?></span>
-                
-            </div>
-            
-            <div class="day-activities"> <?php foreach ($acts as $a): ?>
-                    <div class="activity-card">
-                        <div class="activity-card__title">
-                            <strong><?= $a['title'] ?></strong>
-                        </div>
-                        <div class="activity-card__meta">
-                            🕐 <?= $a['activity_time'] ?> · <?= $a['activity_location'] ?>
-                        </div>
-                        <span class="badge badge--confirmed" style="margin-top:0.5rem; font-size:0.65rem;">Confirmed</span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    <?php endforeach; ?>
+<!-- <div class="tabs"><button type="button" class="tab is-active">Board</button><button type="button" class="tab">Compact list</button></div> -->
+<h2 class="section-title" style="margin-top:2rem;">Itinerary Activities</h2>
+
+<div class="grid grid--2"> 
+    <?php if (!empty($grouped)): ?>
+        <?php foreach ($grouped as $date => $acts): ?>
+            <?php foreach ($acts as $a): ?>
+                <div class="card">
+                  <div class="card__header">
+                      <h3 class="card__title"><?php echo htmlspecialchars($a['title']); ?></h3>
+                      <span class="badge <?php echo ($a['activity_state'] == 'Confirmed') ? 'badge--confirmed' : 'badge--draft'; ?>" style="font-size:0.65rem;">
+                          <?php echo strtoupper(htmlspecialchars($a['activity_state'])); ?>
+                      </span>
+                  </div>
+                  
+                  <div class="activity-details" style="display: grid; gap: 0.5rem; margin-top: 0.5rem;">
+                      <p class="muted" style="margin: 0;">
+                          📅 <strong>Date:</strong> <?php echo date('F j, Y', strtotime($a['activity_date'])); ?>
+                      </p>
+                      
+                      <p class="muted" style="margin: 0;">
+                          🕐 <strong>Time:</strong> <?php echo date('g:i A', strtotime($a['activity_time'])); ?>
+                      </p>
+                      
+                      <p class="muted" style="margin: 0;">
+                          📍 <strong>Location:</strong> <?php echo htmlspecialchars($a['activity_location']); ?>
+                      </p>
+
+                      <p class="muted" style="margin: 0;">
+                          🏷️ <strong>Type:</strong> <span class="tag"><?php echo htmlspecialchars($a['type']); ?></span>
+                      </p>
+                  </div>
+
+                  <div style="margin-top:1rem; display:flex; gap:0.4rem;">
+                      <a href="itinerary.php?trip_id=<?php echo $active_trip_id; ?>&edit_activity_id=<?php echo $a['activity_id']; ?>#activity_form" 
+                        class="btn btn--sm btn--secondary" style="text-decoration:none; text-align:center;">
+                        Edit
+                      </a>
+
+                      <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                          <input type="hidden" name="delete_activity_id" value="<?php echo $a['activity_id']; ?>">
+                          <input type="hidden" name="trip_id" value="<?php echo $active_trip_id; ?>">
+                          <button type="submit" name="delete_activity" class="btn btn--sm btn--danger">Remove</button>
+                      </form>
+                  </div>
+                 <form action="../../controller/RSVPController.php" method="POST"
+      style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+
+    <input type="hidden"
+           name="activity_id"
+           value="<?php echo $a['activity_id']; ?>">
+
+    <button type="submit"
+            name="response"
+            value="yes"
+            class="btn btn--sm">
+        ✅Yes
+    </button>
+
+    <button type="submit"
+            name="response"
+            value="maybe"
+            class="btn btn--sm btn--secondary">
+        🤔Maybe
+    </button>
+
+    <button type="submit"
+            name="response"
+            value="no"
+            class="btn btn--sm btn--danger">
+        ❌No
+    </button>
+
+</form>
+
+</div>
+            <?php endforeach; ?>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p class="muted">No activities found for this trip. Use the form below to add one!</p>
+    <?php endif; ?>
 </div>
 <h2 class="section-title" style="margin-top:2rem;">Compact list view</h2>
-<div class="card" style="margin-bottom:0.75rem;"><h3 class="card__title">Day 1</h3><ul class="list-plain"><li><strong>City Walking Tour</strong> — 09:00 · Central Square</li><li><strong>Museum Visit</strong> — 14:00 · National Museum</li><li><strong>Dinner Reservation</strong> — 19:30 · La Bella Italia</li></ul></div>
-<div class="card" style="margin-bottom:0.75rem;"><h3 class="card__title">Day 2</h3><ul class="list-plain"><li><strong>Beach Day</strong> — 10:00 · Sunny Beach</li><li><strong>Sunset Cruise</strong> — 17:00 · Harbor Marina</li></ul></div>
-<div class="card" style="margin-bottom:0.75rem;"><h3 class="card__title">Day 3</h3><ul class="list-plain"><li><strong>Checkout &amp; Airport</strong> — 08:00 · Hotel Lobby</li></ul></div>
-<h2 class="section-title" style="margin-top:2rem;">New activity form</h2>
+
+<?php 
+if ($activeTrip) {
+    $start = new DateTime($activeTrip['start_date']);
+    $end = new DateTime($activeTrip['end_date']);
+    $end->modify('+1 day'); 
+    $interval = new DateInterval('P1D');
+    $period = new DatePeriod($start, $interval, $end);
+
+    $dayCounter = 1;
+    foreach ($period as $date) {
+        $dateStr = $date->format('Y-m-d');
+        ?>
+        <div class="card" style="margin-bottom:0.75rem;">
+            <h3 class="card__title">
+                Day <?php echo $dayCounter++; ?> 
+                <span style="font-size: 0.8rem; font-weight: normal; color: #666;">
+                    (<?php echo $date->format('M j'); ?>)
+                </span>
+            </h3>
+            
+            <ul class="list-plain">
+                <?php if (isset($grouped[$dateStr])): ?>
+                    <?php foreach ($grouped[$dateStr] as $a): ?>
+                        <li>
+                            <strong><?php echo htmlspecialchars($a['title']); ?></strong> 
+                            — <?php echo date('g:i A', strtotime($a['activity_time'])); ?> 
+                            · <?php echo htmlspecialchars($a['activity_location']); ?>
+                        </li>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <li class="muted">No activities planned</li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <?php
+    }
+}
+?>
+<h2 class="section-title" id="activity_form"><?php echo $edit_activity ? 'Edit Activity' : 'New Activity'; ?></h2>
 
 <form method="POST" class="card">
+    <input type="hidden" name="trip_id" value="<?php echo $active_trip_id; ?>" />
+    
+    <?php if($edit_activity): ?>
+        <input type="hidden" name="activity_id" value="<?php echo $edit_activity['activity_id']; ?>">
+    <?php endif; ?>
 
-<div class="form-grid">
+    <div class="form-grid">
+        <div class="form-row">
+            <label for="a-title">Activity Title</label>
+            <input id="a-title" name="title" class="input" 
+                   value="<?php echo $edit_activity ? htmlspecialchars($edit_activity['title']) : ''; ?>" 
+                   placeholder="e.g., Eiffel Tower Visit" required />
+        </div>
 
-<input
-  type="hidden"
-  name="trip_id"
-  value="1"
-/>
+        <!-- <div class="form-row">
+            <label for="a-date">Date</label>
+            <input 
+                id="a-date" 
+                type="date" 
+                name="activity_date" 
+                class="input" 
+                value="<?php echo ($edit_activity && !empty($edit_activity['activity_date'])) ? date('Y-m-d', strtotime($edit_activity['activity_date'])) : ''; ?>" 
+                required 
+            />
+        </div> -->
 
-<div class="form-row">
-<label>Title</label>
+        <div class="form-row">
+        <label for="a-date">Activity Date</label>
+        <input 
+            id="a-date" 
+            type="date" 
+            name="activity_date" 
+            class="input"
+            min="<?php echo $activeTrip['start_date']; ?>"
+            max="<?php echo $activeTrip['end_date']; ?>"
+            value="<?php echo ($edit_activity && !empty($edit_activity['activity_date'])) ? date('Y-m-d', strtotime($edit_activity['activity_date'])) : ''; ?>" 
+            required 
+          />
+         </div>
 
-<input
-  name="title"
-  class="input"
-  value=""
-  placeholder="e.g., Eiffel Tower Visit"
-/>
-</div>
+        <div class="form-row">
+            <label for="a-time">Time</label>
+            <input id="a-time" type="time" name="activity_time" class="input" 
+                   value="<?php echo $edit_activity ? $edit_activity['activity_time'] : ''; ?>" required />
+        </div>
 
-<div class="form-row">
-<label>Date</label>
+        <div class="form-row">
+            <label for="a-loc">Location</label>
+            <input id="a-loc" name="location" class="input" 
+                   value="<?php echo $edit_activity ? htmlspecialchars($edit_activity['activity_location']) : ''; ?>" 
+                   placeholder="Enter activity location..." required />
+        </div>
 
-<input
-  type="date"
-  name="activity_date"
-  class="input"
-/>
-</div>
+        <div class="form-row">
+            <label for="a-type">Activity Type</label>
+            <select id="a-type" name="type" class="input">
+                <option value="Indoor" <?php echo ($edit_activity && $edit_activity['type'] == 'Indoor') ? 'selected' : ''; ?>>Indoor</option>
+                <option value="Outdoor" <?php echo ($edit_activity && $edit_activity['type'] == 'Outdoor') ? 'selected' : ''; ?>>Outdoor</option>
+            </select>
+        </div>
 
-<div class="form-row">
-<label>Time</label>
+        <div class="form-row">
+            <label for="a-status">Status</label>
+            <select id="a-status" name="activity_state" class="input">
+              <option value="Confirmed" <?php echo ($edit_activity && $edit_activity['activity_state'] == 'Confirmed') ? 'selected' : ''; ?>>Confirmed</option>
+              <option value="Draft" <?php echo ($edit_activity && $edit_activity['activity_state'] == 'Draft') ? 'selected' : ''; ?>>Draft</option>
+            </select>
+        </div>
 
-<input
-  type="time"
-  name="activity_time"
-  class="input"
-  value=""
-/>
-</div>
-
-<div class="form-row">
-<label>Location</label>
-
-<input
-  name="location"
-  class="input"
-  value=""
-  placeholder="enter activity location..."
-/>
-</div>
-
-
-
-<div class="form-row">
-<label>Activity type</label>
-
-<select
-  name="type"
-  class="input"
->
-<option value="" disabled selected>Choose activity type...</option>
-  <option>Indoor</option>
-  <option >Outdoor</option>
-</select>
-
-</div>
-
-<div class="form-row">
-<label>Status</label>
-
-<select
-  name="activity_state"
-  class="input"
->
-<option value="" disabled selected>Choose activity stat...</option>
-  <option>Draft</option>
-  <option >Confirmed</option>
-</select>
-
-</div>
-
-<div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-
-<button
-  type="button"
-  class="btn btn--secondary"
->
-Cancel
-</button>
-
-<button
-  type="submit"
-  name="add_activity"
-  class="btn btn--primary"
->
-Add activity
-</button>
-
-</div>
-
-</div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+            <?php if($edit_activity): ?>
+                <a href="itinerary.php?trip_id=<?php echo $active_trip_id; ?>" class="btn btn--secondary" style="text-decoration:none;">Cancel Edit</a>
+                <button type="submit" name="update_activity" class="btn btn--primary">Update activity</button>
+            <?php else: ?>
+                <button type="submit" name="add_activity" class="btn btn--primary">Add activity</button>
+            <?php endif; ?>
+        </div>
+    </div>
 </form>
 </div></div>
     </div></main></div>

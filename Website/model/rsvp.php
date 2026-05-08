@@ -1,7 +1,12 @@
 <?php
+
 require_once __DIR__ . '/../controller/DBController.php';
 
-class rsvp {
+class RSVP {
+
+    public $activity_id;
+    public $user_id;
+    public $response;
 
     private $db;
 
@@ -9,72 +14,111 @@ class rsvp {
         $this->db = new DBController();
     }
 
-    public function createRSVP($activity_id, $user_id, $response) {
+    public function saveResponse() {
 
-        if ($this->db->openConnection()) {
-
-            $query = "INSERT INTO rsvp (activity_id, user_id, response) 
-                  VALUES (?, ?, ?) 
-                  ON DUPLICATE KEY UPDATE response = ?";
-        
-                 $stmt = $this->db->connection->prepare($query);
-        
-                $stmt->bind_param("iiss", $activity_id, $user_id, $response, $response);
-
-            $result = $stmt->execute();
-
-            $this->db->closeConnection();
-
-            return $result;
+        if(!$this->db->openConnection()){
+            return false;
         }
 
-        return false;
-    }
-    
-public function getActivityAttendanceDetails($activity_id) {
-    $data = [
-        "counts" => ["yes" => 0, "maybe" => 0, "no" => 0],
-        "names" => ["yes" => [], "maybe" => [], "no" => []]
-    ];
+        $conn = $this->db->connection;
 
-    if ($this->db->openConnection()) {
-        // Query يجيب العدد والأسماء في نفس الوقت عن طريق عمل JOIN مع جدول الـ users
-        $query = "SELECT r.response, u.name 
-                  FROM rsvp r 
-                  JOIN users u ON r.user_id = u.user_id 
-                  WHERE r.activity_id = ?";
-        
-        $stmt = $this->db->connection->prepare($query);
-        $stmt->bind_param("i", $activity_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
+        // check if already exists
+        $check = $conn->prepare("
+            SELECT rsvp_id 
+            FROM rsvp
+            WHERE rsvp.activity_id = ? AND user_id = ?
+        ");
 
-        while ($row = $res->fetch_assoc()) {
-            $resp = $row['response']; // yes, maybe, or no
-            if (isset($data['names'][$resp])) {
-                $data['names'][$resp][] = $row['name'];
-                $data['counts'][$resp]++;
-            }
+        $check->bind_param("ii", $this->activity_id, $this->user_id);
+        $check->execute();
+
+        $result = $check->get_result();
+
+        // update
+        if($result->num_rows > 0){
+
+            $update = $conn->prepare("
+                UPDATE rsvp
+                SET response = ?
+                WHERE rsvp.activity_id = ? AND user_id = ?
+            ");
+
+            $update->bind_param(
+                "sii",
+                $this->response,
+                $this->activity_id,
+                $this->user_id
+            );
+
+            return $update->execute();
         }
-        $this->db->closeConnection();
-    }
-    return $data;
-}
-public function getMyResponse($activity_id, $user_id) {
-    $response = null;
-    if ($this->db->openConnection()) {
-        $stmt = $this->db->connection->prepare(
-            "SELECT response FROM rsvp
-             WHERE activity_id = ? AND user_id = ? LIMIT 1"
+
+        // insert
+        $insert = $conn->prepare("
+            INSERT INTO rsvp(activity_id, user_id, response)
+            VALUES(?,?,?)
+        ");
+
+        $insert->bind_param(
+            "iis",
+            $this->activity_id,
+            $this->user_id,
+            $this->response
         );
-        $stmt->bind_param("ii", $activity_id, $user_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $row = $res->fetch_assoc();
-        if ($row) $response = $row['response'];
-        $this->db->closeConnection();
+
+        return $insert->execute();
     }
-    return $response;
+
+    public function getActivityResponses($activity_id){
+
+        if(!$this->db->openConnection()){
+            return false;
+        }
+
+        $conn = $this->db->connection;
+
+        $sql = "
+            SELECT 
+                users.name,
+                rsvp.response
+            FROM rsvp
+            JOIN users
+            ON users.user_id = rsvp.user_id
+            WHERE rsvp.activity_id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+
+        $stmt->bind_param("i", $activity_id);
+
+        $stmt->execute();
+
+        return $stmt->get_result();
+    }
+
+    public function getCounts($activity_id){
+
+        if(!$this->db->openConnection()){
+            return false;
+        }
+
+        $conn = $this->db->connection;
+
+        $sql = "
+            SELECT 
+                response,
+                COUNT(*) as total
+            FROM rsvp
+            WHERE rsvp.activity_id = ?
+            GROUP BY response
+        ";
+
+        $stmt = $conn->prepare($sql);
+
+        $stmt->bind_param("i", $activity_id);
+
+        $stmt->execute();
+
+        return $stmt->get_result();
+    }
 }
-}
-?>
