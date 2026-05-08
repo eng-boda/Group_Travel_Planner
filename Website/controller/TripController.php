@@ -50,8 +50,8 @@ class TripController {
             return false;
         }
 
-        $query = "SELECT * FROM trip WHERE created_by = $user_id ORDER BY start_date DESC";
-        
+        $user_id = (int)$user_id;
+        $query = "SELECT * FROM trip WHERE created_by = $user_id ORDER BY start_date DESC";        
         $result = $this->db->select($query);
         $this->db->closeConnection();
         

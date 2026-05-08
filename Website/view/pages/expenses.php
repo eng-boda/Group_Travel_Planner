@@ -1,28 +1,99 @@
 <?php
+ob_start();
+session_start();
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
+require_once __DIR__ . '/../../controller/ExpenseController.php';
 require_once __DIR__ . '/../../controller/TripController.php';
+require_once __DIR__ . '/../../controller/NonCashController.php';
 
 $auth = new AuthController();
 
 $currentUser = $auth->getCurrentUser();
 
-$tripController = new TripController();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense']) && $currentUser) {
+  $expenseController = new ExpenseController();
+  $result = $expenseController->addExpense($_POST, $currentUser->user_id);
 
+  if ($result) {
+    $_SESSION['success_msg'] = "Expense Added Successfully";
+    $tripId = isset($_POST['trip_id']) ? (int) $_POST['trip_id'] : 1;
+    header("Location: expenses.php?trip_id=" . $tripId . "&added=1");
+    exit();
+  }
+
+  $_SESSION['err_msg'] = "Failed to add expense";
+  $tripId = isset($_POST['trip_id']) ? (int) $_POST['trip_id'] : 1;
+  header("Location: expenses.php?trip_id=" . $tripId . "&error=1");
+  exit();
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_noncash']) && $currentUser) {
+
+    $nonCashController = new NonCashController();
+
+    $result = $nonCashController->addNonCash(
+        $_POST,
+        $_FILES['proof_file'],
+        $currentUser->user_id
+    );
+
+    if ($result) {
+
+        $_SESSION['success_msg'] = "Non-cash contribution added";
+
+        header("Location: expenses.php?trip_id=" . $_POST['trip_id']);
+
+        exit();
+    }
+
+    $_SESSION['err_msg'] = "Failed to add non-cash contribution";
+
+    header("Location: expenses.php?trip_id=" . $_POST['trip_id']);
+
+    exit();
+}
+$tripController = new TripController();
 $trips = $tripController->getAllTrips($currentUser->user_id);
 
-$active_trip_id = isset($_GET['trip_id']) ? $_GET['trip_id'] : ($trips[0]['trip_id'] ?? null);
+$activeTripId = isset($_GET['trip_id'])
+    ? (int)$_GET['trip_id']
+    : ($trips[0]['trip_id'] ?? null);
 
+$expenseController = new ExpenseController();
+$expenses = $activeTripId
+    ? $expenseController->getExpenses($activeTripId)
+    : [];
+
+$nonCashController = new NonCashController();
+
+$nonCashContributions = $activeTripId
+    ? $nonCashController->getNonCash($activeTripId)
+    : [];    
 $activeTrip = null;
-if ($active_trip_id) {
+if ($activeTripId) {
     foreach ($trips as $t) {
-        if ($t['trip_id'] == $active_trip_id) {
+        if ($t['trip_id'] == $activeTripId) {
             $activeTrip = $t;
             break;
         }
     }
 }
 ?>
+
+<?php if (isset($_SESSION['success_msg'])): ?>
+  <script>
+    alert('<?php echo $_SESSION['success_msg']; ?>');
+  </script>
+  <?php unset($_SESSION['success_msg']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['err_msg'])): ?>
+  <script>
+    alert('<?php echo $_SESSION['err_msg']; ?>');
+  </script>
+  <?php unset($_SESSION['err_msg']); ?>
+<?php endif; ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -48,55 +119,55 @@ if ($active_trip_id) {
     </div>
     </div>
     <nav class="sidebar__nav" aria-label="Main navigation">
-    <a href="index.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="index.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◉</span> Dashboard
     </a>
 
-    <a href="members.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="members.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'members.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">👥</span> Members
     </a>
 
-    <a href="itinerary.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="itinerary.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'itinerary.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◎</span> Itinerary
     </a>
 
-    <a href="voting.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="voting.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'voting.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◇</span> Voting
     </a>
 
-    <a href="rsvp.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="rsvp.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'rsvp.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">✓</span> RSVP
     </a>
 
-    <a href="expenses.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="expenses.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'expenses.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">$</span> Expenses
     </a>
 
-    <a href="chat.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="chat.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'chat.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">💬</span> Chat
     </a>
 
-    <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="documents.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'documents.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">📄</span> Documents
     </a>
 
-    <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>" 
+    <a href="checklist.php?trip_id=<?php echo $activeTripId; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'checklist.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">☑</span> Checklist
@@ -108,7 +179,9 @@ if ($active_trip_id) {
   <main class="main">
     <header class="topbar">
       <button type="button" class="btn btn--icon mobile-only" aria-label="Open menu">☰</button>
-      <div class="topbar__titles"><p class="eyebrow">Budget</p><h1 class="topbar__title">Expenses</h1><p class="muted topbar__session" style="margin:0.35rem 0 0;font-size:0.85rem;">Signed in as <?php echo $currentUser->name ?></p></div>
+      <p class="muted topbar__session" style="margin:0.35rem 0 0;font-size:0.85rem;">
+         Signed in as <?php echo htmlspecialchars($currentUser->name ?? 'Guest'); ?>
+      </p>
       <div class="topbar__actions"></div>
     </header>
     <div class="content">
@@ -129,32 +202,152 @@ if ($active_trip_id) {
 <div class="card"><h3 class="card__title">Quick tip</h3><p class="muted" style="margin:0.5rem 0 0;font-size:0.85rem;">Use tabs for Settle debts &amp; Settlement.</p></div>
 </div>
 
-<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Kitty (shared pool)</h3><div class="form-grid"><div class="form-row"><label>Trip</label><select class="input"><option>Berlin workshop</option><option>Lisbon offsite</option><option>Tokyo summit</option></select></div><div class="form-row"><label>Contributor name</label><input class="input" value="Ali" /></div><div class="form-row"><label>Amount (trip base)</label><input type="number" class="input" value="500" /></div><div class="form-row"><button type="button" class="btn btn--primary">Log contribution</button></div></div><div style="margin-top:1rem;"><div style="margin-bottom:0.75rem;padding:0.75rem;background:rgba(99,102,241,0.06);border-radius:10px;"><strong>Berlin workshop</strong> · Balance: $1,200.00<ul class="list-plain" style="margin:0.35rem 0 0;font-size:0.85rem;"><li>Ali: $500.00</li><li>Sara: $400.00</li><li>Mona: $300.00</li></ul></div></div></div>
+<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Kitty (shared pool)</h3><div class="form-grid"><div class="form-row"><label>Trip</label><select name="trip_id" class="input" required>
+
+<?php foreach ($trips as $trip): ?>
+
+<option value="<?php echo $trip['trip_id']; ?>"
+    <?php echo ($trip['trip_id'] == $activeTripId) ? 'selected' : ''; ?>>
+
+    <?php echo htmlspecialchars($trip['trip_name']); ?>
+
+</option>
+
+<?php endforeach; ?>
+
+</select></div><div class="form-row"><label>Contributor name</label><input class="input" value="Ali" /></div><div class="form-row"><label>Amount (trip base)</label><input type="number" class="input" value="500" /></div><div class="form-row"><button type="button" class="btn btn--primary">Log contribution</button></div></div><div style="margin-top:1rem;"><div style="margin-bottom:0.75rem;padding:0.75rem;background:rgba(99,102,241,0.06);border-radius:10px;"><strong>Berlin workshop</strong> · Balance: $1,200.00<ul class="list-plain" style="margin:0.35rem 0 0;font-size:0.85rem;"><li>Ali: $500.00</li><li>Sara: $400.00</li><li>Mona: $300.00</li></ul></div></div></div>
 
 <div class="tabs"><button type="button" class="tab is-active">Expenses</button><button type="button" class="tab">Settle debts</button><button type="button" class="tab">Settlement</button></div>
 
-<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Filter &amp; search</h3><div class="form-grid" style="margin-top:0.75rem;"><div class="form-row"><label>Trip</label><select class="input"><option value="">All trips</option><option>Berlin workshop</option><option>Lisbon offsite</option><option>Tokyo summit</option></select></div><div class="form-row"><label>Category</label><select class="input"><option value="">All categories</option><option>🚗 Transport</option><option>🏨 Lodging</option><option>🍽 Food &amp; dining</option><option>📌 Other</option></select></div><div class="form-row"><label>Search description</label><input type="search" class="input" /></div></div></div>
+<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Filter &amp; search</h3><div class="form-grid" style="margin-top:0.75rem;"><div class="form-row"><label>Trip</label><select class="input">
+    <option value="">All trips</option>
+    <?php foreach ($trips as $trip): ?>
+    <option value="<?php echo $trip['trip_id']; ?>">
+        <?php echo htmlspecialchars($trip['trip_name']); ?>
+    </option>
+    <?php endforeach; ?>
+</select></div><div class="form-row"><label>Category</label><select class="input"><option value="">All categories</option><option>🚗 Transport</option><option>🏨 Lodging</option><option>🍽 Food &amp; dining</option><option>📌 Other</option></select></div><div class="form-row"><label>Search description</label><input type="search" class="input" /></div></div></div>
 
-<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Add expense</h3><form class="form-grid">
-<div class="form-row"><label>Trip</label><select class="input"><option value="">— Select trip —</option><option>Berlin workshop</option><option>Lisbon offsite</option><option>Tokyo summit</option></select></div>
-<div class="form-row"><label>Description</label><input class="input" value="Taxi to venue" /></div>
-<div class="form-row"><label>Original amount</label><input type="number" class="input" value="45" /></div>
-<div class="form-row"><label>Original currency</label><select class="input"><option>US Dollar (USD)</option><option>Euro (EUR)</option><option>British Pound (GBP)</option><option>Japanese Yen (JPY)</option><option>Canadian Dollar (CAD)</option><option>Egyptian Pound (EGP)</option></select></div>
-<div class="form-row"><label>Converted (live)</label><input class="input" readonly style="background:rgba(99,102,241,0.06);" value="$45.00 → $45.00 (× 1)" /><p class="muted" style="font-size:0.75rem;margin:0.25rem 0 0;">Direct rate only; else N/A.</p></div>
-<div class="form-row"><label>Category</label><select class="input"><option>🚗 Transport</option><option>🏨 Lodging</option><option>🍽 Food &amp; dining</option><option>📌 Other</option></select></div>
-<div class="form-row"><label>Paid by</label><input class="input" value="Ali" /></div>
-<div class="form-row"><label><input type="checkbox" /> Pay from kitty</label></div>
-<div class="form-row"><label>Upload receipt (OCR sim)</label><input type="file" class="input" accept="image/jpeg,image/png,image/webp" /></div>
-<div class="form-row"><label><input type="checkbox" /> Make recurring</label><div style="margin-top:0.5rem;display:grid;gap:0.5rem;"><input type="date" class="input" value="2025-07-01" /><input type="date" class="input" value="2025-12-31" /><select class="input"><option>Daily</option><option>Weekly</option><option selected>Monthly</option></select></div></div>
-<div class="form-row"><label>Split</label><div style="display:flex;gap:1rem;margin-bottom:0.5rem;"><label><input type="radio" name="split" checked /> Equal</label><label><input type="radio" name="split" /> Custom %</label></div><div><div style="font-size:0.85rem;margin-bottom:0.25rem;">Ali: $11.25 (25%)</div><div style="font-size:0.85rem;margin-bottom:0.25rem;">Sara: $11.25 (25%)</div><div style="font-size:0.85rem;margin-bottom:0.25rem;">Mona: $11.25 (25%)</div><div style="font-size:0.85rem;margin-bottom:0.25rem;">Ahmed: $11.25 (25%)</div></div></div>
-<div class="form-row" style="display:flex;gap:0.5rem;flex-wrap:wrap;"><button type="button" class="btn btn--primary">Add expense</button></div>
+<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Add expense</h3><form method="POST" class="form-grid">
+<div class="form-row">
+<label>Trip</label>
+
+<select name="trip_id" class="input" required>
+
+<?php foreach ($trips as $trip): ?>
+
+<option value="<?php echo $trip['trip_id']; ?>"
+    <?php echo ($trip['trip_id'] == $activeTripId) ? 'selected' : ''; ?>>
+
+    <?php echo htmlspecialchars($trip['trip_name']); ?>
+
+</option>
+
+<?php endforeach; ?>
+
+</select>
+</div>
+<div class="form-row"><label>Description</label><input name="description" class="input" value="" required /></div>
+<div class="form-row"><label>Original amount</label><input type="number" step="0.01" min="0" name="original_amount" class="input" value="" required /></div>
+<div class="form-row"><label>Original currency</label><select name="original_currency" class="input" required><option value="" disabled selected>Choose currency...</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="JPY">JPY</option><option value="CAD">CAD</option><option value="EGP">EGP</option></select></div>
+<div class="form-row"><label>Converted amount</label><input type="number" step="0.01" min="0" name="converted_amount" class="input" value="" /><p class="muted" style="font-size:0.75rem;margin:0.25rem 0 0;">Leave empty to use original amount.</p></div>
+<div class="form-row">
+  <label>Category</label>
+  <select name="category_id" class="input" required>
+    <option value="" disabled selected>Choose category...</option>
+    <option value="1">🚗 Transport</option>
+    <option value="2">🏨 Lodging</option>
+    <option value="3">🍽 Food & Dining</option>
+    <option value="4">📌 Other</option>
+  </select>
+</div>
+
+<div class="form-row" style="display:flex;gap:0.5rem;flex-wrap:wrap;"><button type="submit" name="add_expense" class="btn btn--primary">Add expense</button></div>
 </form></div>
+
+<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Expenses (Trip <?php echo $activeTripId; ?>)</h3>
+<?php if (!$expense): ?>
+  <p class="muted" style="margin:0;">No expenses yet.</p>
+<?php else: ?>
+  <div style="overflow-x:auto;margin-top:0.75rem;">
+    <table style="width:100%;font-size:0.85rem;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:0.5rem;">Description</th>
+          <th style="text-align:left;padding:0.5rem;">Original</th>
+          <th style="text-align:left;padding:0.5rem;">Converted</th>
+          <th style="text-align:left;padding:0.5rem;">Category</th>
+          <th style="text-align:left;padding:0.5rem;">Uploaded by</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($expense as $e): ?>
+          <tr>
+            <td style="padding:0.5rem;"><?php echo htmlspecialchars($e['description']); ?></td>
+            <td style="padding:0.5rem;"><?php echo htmlspecialchars($e['original_currency']) . ' ' . htmlspecialchars($e['original_amount']); ?></td>
+            <td style="padding:0.5rem;"><?php echo htmlspecialchars($e['converted_amount']); ?></td>
+            <td style="padding:0.5rem;"><?php echo htmlspecialchars($e['category_id']); ?></td>
+            <td style="padding:0.5rem;"><?php echo htmlspecialchars($e['uploaded_by']); ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+<?php endif; ?>
+</div>
 
 <div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Recurring expenses</h3><ul class="list-plain"><li style="margin-bottom:0.5rem;"><strong>Berlin workshop</strong> · Monthly · Next: 2025-08-01 · Remaining est.: 5 <button type="button" class="btn btn--sm btn--danger">Cancel recurring</button></li></ul></div>
 <div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Refunds summary</h3><ul class="list-plain"><li>rf_001 · expense exp_taxi: $15.00</li><li>rf_002 · expense exp_hotel: $120.00</li></ul></div>
 
-<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Non-cash contributions</h3><form class="form-grid"><div class="form-row"><label>Trip</label><select class="input"><option>Berlin workshop</option><option>Lisbon offsite</option><option>Tokyo summit</option></select></div><div class="form-row"><label>Description</label><input class="input" value="Company van for transport" /></div><div class="form-row"><label>Contributor</label><input class="input" value="Ahmed" /></div><div class="form-row"><label>Estimated value (trip base)</label><input type="number" class="input" value="300" /></div><div class="form-row"><label>Proof file</label><input type="file" class="input" accept=".pdf,image/*" /></div><div class="form-row"><button type="submit" class="btn btn--primary">Add non-cash</button></div></form><div style="overflow-x:auto;margin-top:1rem;"><table style="width:100%;font-size:0.85rem;"><tbody><tr><td style="padding:0.5rem;">Company van</td><td style="padding:0.5rem;">Ahmed</td><td style="padding:0.5rem;">$300.00</td><td style="padding:0.5rem;">receipt.pdf</td><td style="padding:0.5rem;">Pending</td><td style="padding:0.5rem;">—</td><td style="padding:0.5rem;"><button type="button" class="btn btn--sm btn--secondary">Leader review</button></td></tr></tbody></table></div></div>
+<div class="card" style="margin-bottom:1rem;"><h3 class="card__title">Non-cash contributions</h3><form class="form-grid"><div class="form-row"><label>Trip</label><select name="trip_id" class="input" required>
 
+<?php foreach ($trips as $trip): ?>
+
+<option value="<?php echo $trip['trip_id']; ?>"
+    <?php echo ($trip['trip_id'] == $activeTripId) ? 'selected' : ''; ?>>
+
+    <?php echo htmlspecialchars($trip['trip_name']); ?>
+
+</option>
+
+<?php endforeach; ?>
+</select>
+<form method="POST" enctype="multipart/form-data" class="form-grid">
+
+
+
+<div class="form-row">
+<label>Description</label>
+<input name="description" class="input" required />
+</div>
+
+<div class="form-row">
+<label>Estimated value</label>
+<input type="number" step="0.01"
+name="estimatedValue"
+class="input"
+required />
+</div>
+
+<div class="form-row">
+<label>Proof file</label>
+<input type="file"
+name="proof_file"
+class="input"
+accept=".pdf,image/*" />
+</div>
+
+<div class="form-row">
+<button type="submit"
+name="add_noncash"
+class="btn btn--primary">
+
+Add non-cash
+
+</button>
+</div>
+
+</form>
 <h2 class="section-title" style="margin-top:2rem;">Settle debts</h2>
 <div class="card" style="margin-bottom:0.75rem;"><h4 class="card__title" style="font-size:1rem;">Berlin workshop</h4><p class="muted" style="font-size:0.85rem;">Minimum transactions: 2</p><ul class="list-plain"><li>Sara pays Ali: $120.00</li><li>Mona pays Ali: $85.00</li></ul></div>
 <div class="card" style="margin-bottom:0.75rem;"><h4 class="card__title" style="font-size:1rem;">Lisbon offsite</h4><p class="muted" style="font-size:0.85rem;">Minimum transactions: 1</p><ul class="list-plain"><li>Mona pays Sara: $210.00</li></ul></div>
