@@ -1,0 +1,11 @@
+Group Travel Planner Test File
+
+This is a sample document for testing the upload feature.
+
+If this file uploads successfully:
+1. The file should appear in the uploads folder.
+2. A new row should be added to the documents table.
+3. The document should appear in the Documents page.
+4. The Download button should work.
+
+Test completed successfully.

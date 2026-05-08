@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../model/user.php';
 require_once __DIR__ . '/../../controller/TripController.php';
 require_once __DIR__ . '/../../controller/RoleController.php';
 require_once __DIR__ . '/../../controller/MemberController.php';
+require_once __DIR__ . '/../../model/expense.php';
 
 $roleController   = new RoleController();
 $memberController = new MemberController();
@@ -55,12 +56,13 @@ if ($active_trip_id) {
 }
 
 // Budget stats for active trip
+$expenseModel = new Expense();
 $total_spent      = 0;
 $budget_limit     = 0;
 $progress_percent = 0;
 if ($activeTrip) {
-    $total_spent      = 1250; // placeholder — replace with real expense query when expenses are wired up
-    $budget_limit     = $activeTrip['budget'];
+    $budget_limit = (float)$activeTrip['budget'];
+    $total_spent = $expenseModel->getTotalSpent($active_trip_id);
     $progress_percent = ($budget_limit > 0) ? min(($total_spent / $budget_limit) * 100, 100) : 0;
 }
 
@@ -263,17 +265,11 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
         </div>
       <?php endif; ?>
 
-      <div class="tabs">
-        <button type="button" class="tab is-active">Overview</button>
-        <button type="button" class="tab">All trips</button>
-        <button type="button" class="tab">Members</button>
-      </div>
-
       <!-- ── Overview cards (dynamic from V1) ──────────────────────────────── -->
       <div class="grid grid--3">
         <div class="card card--gradient">
           <div class="card__header">
-            <h3 class="card__title">Trip window</h3>
+            <h3 class="card__title"><?php echo $activeTrip['trip_name'] ?></h3>
             <span class="badge badge--info">Live</span>
           </div>
           <?php if ($activeTrip): ?>
