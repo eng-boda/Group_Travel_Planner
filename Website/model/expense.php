@@ -2,8 +2,7 @@
 
 require_once __DIR__ . '/../controller/DBController.php';
 
-class expense
-{
+class Expense {
     public $expense_id;
     public $trip_id;
     public $category_id;
@@ -15,105 +14,58 @@ class expense
 
     private $db;
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->db = new DBController();
     }
 
-    public function createExpense()
-    {
-        if (!$this->db->openConnection()) {
-            error_log("Database connection failed in createExpense");
-            return false;
-        }
-        $query = "
-    INSERT INTO expense
-    (
-        trip_id,
-        category_id,
-        original_currency,
-        description, 
-        original_amount, 
-        converted_amount, 
-        uploaded_by
-    )   
-    VALUES
-    (
-        '$this->trip_id',
-        '$this->category_id',
-        '$this->original_currency',
-        '$this->description',
-        '$this->original_amount',
-        '$this->converted_amount',
-        '$this->uploaded_by'
-    )
-    ";
-    $result = $this->db->insert($query);
+    // Add a new expense
+    public function createExpense() {
+        if (!$this->db->openConnection()) return false;
 
-    $this->db->closeConnection();
+        $query = "INSERT INTO expense 
+                  (trip_id, category_id, original_currency, description, original_amount, converted_amount, uploaded_by)
+                  VALUES 
+                  ('$this->trip_id', '$this->category_id', '$this->original_currency', 
+                   '$this->description', '$this->original_amount', '$this->converted_amount', '$this->uploaded_by')";
 
-    return $result;
-}
+        $result = $this->db->insert($query);
+        $this->db->closeConnection();
+        return $result;
+    }
 
+    // Get all expenses for a trip
     public function getExpensesByTrip($trip_id) {
-
-    if(!$this->db->openConnection()) {
-        return [];
+        if (!$this->db->openConnection()) return [];
+        $query = "SELECT e.*, c.name as category_name 
+                  FROM expense e 
+                  LEFT JOIN category c ON e.category_id = c.category_id
+                  WHERE e.trip_id = $trip_id 
+                  ORDER BY e.expense_id DESC";
+        $result = $this->db->select($query);
+        $this->db->closeConnection();
+        return $result ? $result : [];
     }
 
-    $query = "SELECT * FROM expense WHERE trip_id = $trip_id ORDER BY created_at DESC";
+    // Get total spent for a trip (sum of converted_amount)
+    public function getTotalSpent($trip_id) {
+        if (!$this->db->openConnection()) return 0;
+        $query = "SELECT SUM(converted_amount) as total FROM expense WHERE trip_id = $trip_id";
+        $result = $this->db->select($query);
+        $this->db->closeConnection();
+        return $result ? (float)($result[0]['total'] ?? 0) : 0;
+    }
 
-    $result = $this->db->select($query);
-
-    $this->db->closeConnection();
-
-    return $result;
-}
-
-public function getExpense($id) {
-    if(!$this->db->openConnection()) return false;
-    $query = "SELECT * FROM expense WHERE expense_id = $id";
-    $result = $this->db->select($query);
-    $this->db->closeConnection();
-    return $result ? $result[0] : null;
-}
-
-
-
-
-
-
-
-    public function addExpense($expenseData, $splits)
-    {
-        try {
-            // Set properties from $expenseData
-            $this->trip_id = (int)$expenseData['trip_id'];
-            $this->category_id = (int)$expenseData['category_id'];
-            $this->original_currency = (string)$expenseData['original_currency'];
-            $this->description = (string)$expenseData['description'];
-            $this->original_amount = (float)$expenseData['original_amount'];
-            $this->converted_amount = (float)$expenseData['converted_amount'];
-            $this->uploaded_by = (int)$expenseData['uploaded_by'];
-
-            // Create the expense
-            $expenseId = $this->createExpense();
-
-            if (!$expenseId) {
-                error_log("Failed to create expense in addExpense");
-                return false;
-            }
-
-            // Save splits
-            if (!$this->saveSplits($expenseId, $splits)) {
-                error_log("Failed to save splits for expense ID: " . $expenseId);
-                return false;
-            }
-
-            return true;
-        } catch (Exception $e) {
-            error_log("Error in addExpense: " . $e->getMessage());
-            return false;
-        }
+    // Get total spent grouped by category for a trip
+    public function getSpentByCategory($trip_id) {
+        if (!$this->db->openConnection()) return [];
+        $query = "SELECT c.name as category_name, SUM(e.converted_amount) as total
+                  FROM expense e
+                  LEFT JOIN category c ON e.category_id = c.category_id
+                  WHERE e.trip_id = $trip_id
+                  GROUP BY e.category_id";
+        $result = $this->db->select($query);
+        $this->db->closeConnection();
+        return $result ? $result : [];
     }
 }
+?>

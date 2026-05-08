@@ -26,7 +26,7 @@ class NonCash
             return false;
         }
 
-        $query = "INSERT INTO non_cash
+        $query = "INSERT INTO non_cash_contribution
         (trip_id, contributor_id, estimatedValue, description, proof_file, leader_comment, status)
         VALUES (?, ?, ?, ?, ?, ?, ?)";
 
@@ -77,7 +77,7 @@ class NonCash
             return [];
         }
 
-        $query = "SELECT * FROM non_cash
+        $query = "SELECT * FROM non_cash_contribution
                   WHERE trip_id = ?
                   ORDER BY non_cash_id DESC";
 
