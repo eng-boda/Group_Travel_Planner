@@ -421,7 +421,6 @@ function getCategoryIcon(string $name): string {
           </option>
         <?php endforeach; ?>
       </select>
-      <a href="index.php" class="btn btn--ghost btn--sm" style="text-decoration:none;text-align:center;margin-top:.35rem;display:block;">+ New trip</a>
     </div>
     <nav class="sidebar__nav">
       <a href="index.php?trip_id=<?php echo $active_trip_id; ?>"     class="nav-item" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">◉</span> Dashboard</a>
