@@ -430,7 +430,6 @@ function getCategoryIcon(string $name): string {
       <a href="voting.php?trip_id=<?php echo $active_trip_id; ?>"    class="nav-item" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">◇</span> Voting</a>
       <a href="rsvp.php?trip_id=<?php echo $active_trip_id; ?>"      class="nav-item" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">✓</span> RSVP</a>
       <a href="expenses.php?trip_id=<?php echo $active_trip_id; ?>"  class="nav-item is-active" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">$</span> Expenses</a>
-      <a href="chat.php?trip_id=<?php echo $active_trip_id; ?>"      class="nav-item" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">💬</span> Chat</a>
       <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>" class="nav-item" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">📄</span> Documents</a>
       <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>" class="nav-item" style="text-decoration:none;color:inherit;"><span class="nav-item__icon">☑</span> Checklist</a>
     </nav>

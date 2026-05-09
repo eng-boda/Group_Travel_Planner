@@ -99,7 +99,6 @@ if (isset($_GET['delete'])) {
                     ['url' => 'voting.php', 'icon' => '◇', 'label' => 'Voting'],
                     ['url' => 'rsvp.php', 'icon' => '✓', 'label' => 'RSVP'],
                     ['url' => 'expenses.php', 'icon' => '$', 'label' => 'Expenses'],
-                    ['url' => 'chat.php', 'icon' => '💬', 'label' => 'Chat'],
                     ['url' => 'documents.php', 'icon' => '📄', 'label' => 'Documents'],
                     ['url' => 'checklist.php', 'icon' => '☑', 'label' => 'Checklist'],
                 ];

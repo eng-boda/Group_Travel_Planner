@@ -126,12 +126,6 @@ if (isset($_GET['edit_activity_id'])) {
        <span class="nav-item__icon">$</span> Expenses
     </a>
 
-    <a href="chat.php?trip_id=<?php echo $active_trip_id; ?>" 
-       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'chat.php') ? 'is-active' : ''; ?>" 
-       style="text-decoration:none;color:inherit;">
-       <span class="nav-item__icon">💬</span> Chat
-    </a>
-
     <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'documents.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
