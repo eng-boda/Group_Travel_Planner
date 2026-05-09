@@ -164,12 +164,25 @@ $msgMap = [
       <div class="logo-mark" aria-hidden="true">✈</div>
       <div><div class="logo-text">TripSync</div><div class="logo-sub">Collaborative Planner</div></div>
     </div>
+
+    <!-- FIXED: interactive trip selector matching expenses.php -->
     <div class="sidebar__trip">
       <label class="field-label">Active trip</label>
-      <div class="select select--full" style="background:#f8f9fa;border-color:#e9ecef;cursor:default;color:#495057;">
-        <?php echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; ?>
-      </div>
+      <select class="select select--full"
+              onchange="window.location.href='voting.php?trip_id=' + this.value">
+        <?php if (empty($trips)): ?>
+          <option value="">No trips yet</option>
+        <?php else: ?>
+          <?php foreach ($trips as $t): ?>
+            <option value="<?php echo (int)$t['trip_id']; ?>"
+                    <?php echo ($t['trip_id'] == $active_trip_id) ? 'selected' : ''; ?>>
+              <?php echo htmlspecialchars($t['trip_name']); ?>
+            </option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
     </div>
+
     <nav class="sidebar__nav" aria-label="Main navigation">
       <?php
         $pages = [
@@ -250,9 +263,9 @@ $msgMap = [
       <?php foreach ($pollsData as $pd):
         $poll               = $pd['poll'];
         $results            = $pd['results'];
-        $grand_total_weight = (int) $pd['grand_total_weight']; // drives % bar
-        $total_votes        = (int) $pd['total_votes'];        // shown in header
-        $user_voted         = $pd['user_voted'];               // option_id or null
+        $grand_total_weight = (int) $pd['grand_total_weight'];
+        $total_votes        = (int) $pd['total_votes'];
+        $user_voted         = $pd['user_voted'];
         $poll_id            = (int) $poll['poll_id'];
         $deadline           = $poll['deadline'];
         $is_expired         = (strtotime($deadline) < strtotime(date('Y-m-d')));
@@ -286,13 +299,11 @@ $msgMap = [
           $opt_weight = (int)   $opt['total_weight'];
           $org_count  = (int)   $opt['organizer_count'];
           $org_names  =         $opt['organizer_names'];
-          // % bar driven by weighted score so organizer vote counts double
           $pct        = $grand_total_weight > 0 ? round(($opt_weight / $grand_total_weight) * 100) : 0;
           $is_my      = ($user_voted === $oid);
         ?>
         <div class="poll-option-wrap">
 
-          <!-- Label row -->
           <div class="poll-option__row">
             <span>
               <?php echo htmlspecialchars($opt['option_text']); ?>
@@ -308,12 +319,10 @@ $msgMap = [
             </span>
           </div>
 
-          <!-- Progress bar -->
           <div class="poll-option__bar-wrap">
             <div class="poll-option__bar" style="width:<?php echo $pct; ?>%"></div>
           </div>
 
-          <!-- Organizer note (only if at least one organizer chose this option) -->
           <?php if ($org_count > 0): ?>
             <p class="organizer-note">
               <span>Organizer<?php echo $org_count > 1 ? 's' : ''; ?> who chose this:</span>
@@ -323,23 +332,15 @@ $msgMap = [
             </p>
           <?php endif; ?>
 
-          <!-- Action buttons -->
           <div class="action-row">
             <?php if (!$is_expired): ?>
               <?php if (!$user_voted): ?>
-                <!-- First-time vote -->
                 <form method="POST" style="margin:0;">
                   <input type="hidden" name="poll_id"   value="<?php echo $poll_id; ?>" />
                   <input type="hidden" name="option_id" value="<?php echo $oid; ?>" />
                   <button type="submit" name="cast_vote" class="btn btn--sm btn--secondary">Vote</button>
                 </form>
-
-              <?php elseif ($is_my): ?>
-                <!-- Already voted here — change to a different option -->
-                <!-- (no button on current choice; shown on other options below) -->
-
-              <?php else: ?>
-                <!-- Voted elsewhere — offer to switch to this option -->
+              <?php elseif (!$is_my): ?>
                 <form method="POST" style="margin:0;">
                   <input type="hidden" name="poll_id"   value="<?php echo $poll_id; ?>" />
                   <input type="hidden" name="option_id" value="<?php echo $oid; ?>" />

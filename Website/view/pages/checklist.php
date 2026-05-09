@@ -26,7 +26,6 @@ if ($active_trip_id) {
     }
 }
 
-
 // Handle Add Item
 if(isset($_POST['add_item'])) {
     $data = [
@@ -39,19 +38,21 @@ if(isset($_POST['add_item'])) {
     header("Location: checklist.php?trip_id=".$active_trip_id);
     exit();
 }
+
 // Handle Status Change
 if (isset($_GET['toggle']) && isset($_GET['current_status'])) {
     $item_id = $_GET['toggle'];
     $status = $_GET['current_status'];
     $checklistController->toggle($item_id, $status, $currentUser->user_id);
-    
     header("Location: checklist.php?trip_id=" . $active_trip_id);
     exit();
 }
+
 $items = $checklistController->getAll($active_trip_id);
 if($items) {
     $items = array_reverse($items); 
 }
+
 // Handle Delete Item
 if (isset($_GET['delete'])) {
     $checklistController->delete($_GET['delete']);
@@ -82,25 +83,36 @@ if (isset($_GET['delete'])) {
             </div>
         </div>
 
+        <!-- FIXED: interactive trip selector matching expenses.php -->
         <div class="sidebar__trip">
             <label class="field-label">Active trip</label>
-            <div class="select select--full" style="background: #f8f9fa; border-color: #e9ecef; cursor: default; color: #495057;">
-                <?php echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; ?>
-            </div>
+            <select class="select select--full"
+                    onchange="window.location.href='checklist.php?trip_id=' + this.value">
+                <?php if (empty($trips)): ?>
+                    <option value="">No trips yet</option>
+                <?php else: ?>
+                    <?php foreach ($trips as $t): ?>
+                        <option value="<?php echo (int)$t['trip_id']; ?>"
+                                <?php echo ($t['trip_id'] == $active_trip_id) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($t['trip_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
         </div>
 
         <nav class="sidebar__nav" aria-label="Main navigation">
             <?php 
                 $current_page = basename($_SERVER['PHP_SELF']); 
                 $nav_items = [
-                    ['url' => 'index.php', 'icon' => '◉', 'label' => 'Dashboard'],
-                    ['url' => 'members.php', 'icon' => '👥', 'label' => 'Members'],
-                    ['url' => 'itinerary.php', 'icon' => '◎', 'label' => 'Itinerary'],
-                    ['url' => 'voting.php', 'icon' => '◇', 'label' => 'Voting'],
-                    ['url' => 'rsvp.php', 'icon' => '✓', 'label' => 'RSVP'],
-                    ['url' => 'expenses.php', 'icon' => '$', 'label' => 'Expenses'],
+                    ['url' => 'index.php',     'icon' => '◉',  'label' => 'Dashboard'],
+                    ['url' => 'members.php',   'icon' => '👥', 'label' => 'Members'],
+                    ['url' => 'itinerary.php', 'icon' => '◎',  'label' => 'Itinerary'],
+                    ['url' => 'voting.php',    'icon' => '◇',  'label' => 'Voting'],
+                    ['url' => 'rsvp.php',      'icon' => '✓',  'label' => 'RSVP'],
+                    ['url' => 'expenses.php',  'icon' => '$',   'label' => 'Expenses'],
                     ['url' => 'documents.php', 'icon' => '📄', 'label' => 'Documents'],
-                    ['url' => 'checklist.php', 'icon' => '☑', 'label' => 'Checklist'],
+                    ['url' => 'checklist.php', 'icon' => '☑',  'label' => 'Checklist'],
                 ];
 
                 foreach ($nav_items as $nav):
@@ -163,23 +175,22 @@ if (isset($_GET['delete'])) {
                 <p style="font-size:0.85rem; color: #2ecc71; font-weight: 500; margin-bottom: 0.5rem;">
                     ✅ Will be brought by: <?php echo htmlspecialchars($item['completer_name']); ?>
                 </p>
-
                 <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>&toggle=<?php echo $item['item_id']; ?>&current_status=Done" 
                    class="btn btn--sm btn--ghost" style="text-decoration:none; color: #6c757d; border: 1px solid #dee2e6;">
                    ↩ Undo
                 </a>
             <?php else: ?>
                 <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>&toggle=<?php echo $item['item_id']; ?>&current_status=<?php echo $item['status']; ?>" 
-   class="btn btn--sm btn--primary"
-   style="text-decoration: none;">
-   ✓ Complete
-</a>
-<a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>&delete=<?php echo $item['item_id']; ?>" 
-   onclick="return confirm('Are you sure you want to delete this item?')"
-   style="text-decoration: none; color: #e74c3c; font-size: 1rem; margin-left: 10px;"
-   title="Delete Item">
-   ❌
-</a>
+                   class="btn btn--sm btn--primary"
+                   style="text-decoration: none;">
+                   ✓ Complete
+                </a>
+                <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>&delete=<?php echo $item['item_id']; ?>" 
+                   onclick="return confirm('Are you sure you want to delete this item?')"
+                   style="text-decoration: none; color: #e74c3c; font-size: 1rem; margin-left: 10px;"
+                   title="Delete Item">
+                   ❌
+                </a>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>

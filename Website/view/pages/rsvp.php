@@ -75,14 +75,25 @@ if($selected_activity){
 <div id="app" class="app">
   <aside class="sidebar">
     <div class="sidebar__brand"><div class="logo-mark" aria-hidden="true">✈</div><div><div class="logo-text">TripSync</div><div class="logo-sub">Collaborative Planner</div></div></div>
+
+    <!-- FIXED: interactive trip selector matching expenses.php -->
     <div class="sidebar__trip">
-    <label class="field-label">Active trip</label>
-    <div class="select select--full" style="background: #f8f9fa; border-color: #e9ecef; cursor: default; color: #495057;">
-        <?php 
-            echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; 
-        ?>
+      <label class="field-label">Active trip</label>
+      <select class="select select--full"
+              onchange="window.location.href='rsvp.php?trip_id=' + this.value">
+        <?php if (empty($trips)): ?>
+          <option value="">No trips yet</option>
+        <?php else: ?>
+          <?php foreach ($trips as $t): ?>
+            <option value="<?php echo (int)$t['trip_id']; ?>"
+                    <?php echo ($t['trip_id'] == $active_trip_id) ? 'selected' : ''; ?>>
+              <?php echo htmlspecialchars($t['trip_name']); ?>
+            </option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
     </div>
-    </div>    
+
     <nav class="sidebar__nav" aria-label="Main navigation">
     <a href="index.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'is-active' : ''; ?>" 
@@ -160,6 +171,7 @@ if($selected_activity){
 
     <div style="min-width:260px;max-width:400px;width:100%;">
 
+      <!-- activity selector keeps trip_id in the URL -->
       <form method="GET">
 
         <input type="hidden"

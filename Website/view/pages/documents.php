@@ -39,57 +39,61 @@ if ($active_trip_id) {
 <div id="app" class="app">
   <aside class="sidebar">
     <div class="sidebar__brand"><div class="logo-mark" aria-hidden="true">✈</div><div><div class="logo-text">TripSync</div><div class="logo-sub">Collaborative Planner</div></div></div>
+
+    <!-- FIXED: interactive trip selector matching expenses.php -->
     <div class="sidebar__trip">
-    <label class="field-label">Active trip</label>
-    <div class="select select--full" style="background: #f8f9fa; border-color: #e9ecef; cursor: default; color: #495057;">
-        <?php 
-            echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; 
-        ?>
+      <label class="field-label">Active trip</label>
+      <select class="select select--full"
+              onchange="window.location.href='documents.php?trip_id=' + this.value">
+        <?php if (empty($trips)): ?>
+          <option value="">No trips yet</option>
+        <?php else: ?>
+          <?php foreach ($trips as $t): ?>
+            <option value="<?php echo (int)$t['trip_id']; ?>"
+                    <?php echo ($t['trip_id'] == $active_trip_id) ? 'selected' : ''; ?>>
+              <?php echo htmlspecialchars($t['trip_name']); ?>
+            </option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
     </div>
-    </div>
+
     <nav class="sidebar__nav" aria-label="Main navigation">
     <a href="index.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◉</span> Dashboard
     </a>
-
     <a href="members.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'members.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">👥</span> Members
     </a>
-
     <a href="itinerary.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'itinerary.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◎</span> Itinerary
     </a>
-
     <a href="voting.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'voting.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◇</span> Voting
     </a>
-
     <a href="rsvp.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'rsvp.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">✓</span> RSVP
     </a>
-
     <a href="expenses.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'expenses.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">$</span> Expenses
     </a>
-
     <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'documents.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">📄</span> Documents
     </a>
-
     <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'checklist.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
