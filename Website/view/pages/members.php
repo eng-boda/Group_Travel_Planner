@@ -30,7 +30,7 @@ if ($active_trip_id) {
 }
 
 $feedback = '';
-$feedback_type = 'success'; // or 'error'
+$feedback_type = 'success';
 
 // ─── Handle POST actions ──────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $active_trip_id) {
@@ -73,7 +73,6 @@ $members        = $active_trip_id ? $memberController->getTripMembers($active_tr
 $pendingInvites = $active_trip_id ? $memberController->getPendingInvites($active_trip_id) : [];
 $isOrganizer    = $active_trip_id ? $memberController->isOrganizer($currentUser->user_id, $active_trip_id) : false;
 
-// Avatar color palette
 $avatarColors = ['#6366f1', '#8b5cf6', '#06b6d4', '#f43f5e', '#10b981', '#f59e0b', '#ef4444'];
 
 function getAvatarColor($index) {
@@ -127,12 +126,25 @@ function getAvatarColor($index) {
         <div class="logo-sub">Collaborative Planner</div>
       </div>
     </div>
+
+    <!-- FIXED: interactive trip selector matching expenses.php -->
     <div class="sidebar__trip">
       <label class="field-label">Active trip</label>
-      <div class="select select--full" style="background: #f8f9fa; border-color: #e9ecef; cursor: default; color: #495057;">
-        <?php echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; ?>
-      </div>
+      <select class="select select--full"
+              onchange="window.location.href='members.php?trip_id=' + this.value">
+        <?php if (empty($trips)): ?>
+          <option value="">No trips yet</option>
+        <?php else: ?>
+          <?php foreach ($trips as $t): ?>
+            <option value="<?php echo (int)$t['trip_id']; ?>"
+                    <?php echo ($t['trip_id'] == $active_trip_id) ? 'selected' : ''; ?>>
+              <?php echo htmlspecialchars($t['trip_name']); ?>
+            </option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
     </div>
+
     <nav class="sidebar__nav" aria-label="Main navigation">
       <a href="index.php?trip_id=<?php echo $active_trip_id; ?>"
          class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'is-active' : ''; ?>"
@@ -163,11 +175,6 @@ function getAvatarColor($index) {
          class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'expenses.php') ? 'is-active' : ''; ?>"
          style="text-decoration:none;color:inherit;">
          <span class="nav-item__icon">$</span> Expenses
-      </a>
-      <a href="chat.php?trip_id=<?php echo $active_trip_id; ?>"
-         class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'chat.php') ? 'is-active' : ''; ?>"
-         style="text-decoration:none;color:inherit;">
-         <span class="nav-item__icon">💬</span> Chat
       </a>
       <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>"
          class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'documents.php') ? 'is-active' : ''; ?>"
@@ -265,36 +272,24 @@ function getAvatarColor($index) {
               </div>
             </div>
             <div class="member-card__actions">
-              <!-- Promote -->
               <form method="POST" action="members.php?trip_id=<?php echo $active_trip_id; ?>" style="display:inline;">
                 <input type="hidden" name="action" value="promote" />
                 <input type="hidden" name="target_user_id" value="<?php echo $member['user_id']; ?>" />
-                <button
-                  type="submit"
-                  class="btn btn--sm btn--secondary"
-                  <?php echo (!$isOrganizer || $isLeader) ? 'disabled' : ''; ?>
-                >Promote</button>
+                <button type="submit" class="btn btn--sm btn--secondary"
+                  <?php echo (!$isOrganizer || $isLeader) ? 'disabled' : ''; ?>>Promote</button>
               </form>
-              <!-- Demote -->
               <form method="POST" action="members.php?trip_id=<?php echo $active_trip_id; ?>" style="display:inline;">
                 <input type="hidden" name="action" value="demote" />
                 <input type="hidden" name="target_user_id" value="<?php echo $member['user_id']; ?>" />
-                <button
-                  type="submit"
-                  class="btn btn--sm btn--secondary"
-                  <?php echo (!$isOrganizer || !$isLeader || $isSelf) ? 'disabled' : ''; ?>
-                >Demote</button>
+                <button type="submit" class="btn btn--sm btn--secondary"
+                  <?php echo (!$isOrganizer || !$isLeader || $isSelf) ? 'disabled' : ''; ?>>Demote</button>
               </form>
-              <!-- Remove -->
               <form method="POST" action="members.php?trip_id=<?php echo $active_trip_id; ?>" style="display:inline;"
                     onsubmit="return confirm('Remove <?php echo htmlspecialchars($member['name'] ?? 'this member'); ?> from the trip?');">
                 <input type="hidden" name="action" value="remove" />
                 <input type="hidden" name="target_user_id" value="<?php echo $member['user_id']; ?>" />
-                <button
-                  type="submit"
-                  class="btn btn--sm btn--danger"
-                  <?php echo (!$isOrganizer || $isSelf) ? 'disabled' : ''; ?>
-                >Remove</button>
+                <button type="submit" class="btn btn--sm btn--danger"
+                  <?php echo (!$isOrganizer || $isSelf) ? 'disabled' : ''; ?>>Remove</button>
               </form>
             </div>
           </div>
@@ -321,11 +316,8 @@ function getAvatarColor($index) {
                 <form method="POST" action="members.php?trip_id=<?php echo $active_trip_id; ?>" style="display:inline;">
                   <input type="hidden" name="action" value="cancel_invite" />
                   <input type="hidden" name="invite_id" value="<?php echo $invite['invite_id']; ?>" />
-                  <button
-                    type="submit"
-                    class="btn btn--sm btn--secondary"
-                    <?php echo !$isOrganizer ? 'disabled' : ''; ?>
-                  >Cancel</button>
+                  <button type="submit" class="btn btn--sm btn--secondary"
+                    <?php echo !$isOrganizer ? 'disabled' : ''; ?>>Cancel</button>
                 </form>
               </li>
             <?php endforeach; ?>

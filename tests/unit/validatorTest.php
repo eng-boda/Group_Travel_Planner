@@ -1,0 +1,123 @@
+<?php
+use PHPUnit\Framework\TestCase;
+
+    class validatorTest extends TestCase {
+
+        private $v;
+
+        protected function setUp(): void {
+            $this->v = new validator();
+        }
+
+        public function test_min_length_for_password_passes() {
+            $this->v->minLength('Password' , '123456' , 6);
+            $this->assertTrue($this->v->passes());
+        }
+
+        public function test_min_length_for_password_fails() {
+            $this->v->minLength('Password' , '123' , 6);
+            $this->assertFalse($this->v->passes());
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class validator
+{
+    public $errors = [];
+
+    // Required field
+    public function required($field, $value, $message = null)
+    {
+        unset($this->errors[$field]);
+
+        if (empty(trim($value))) {
+            $this->errors[$field] = $message ?? "$field is required.";
+        }
+    }
+
+    // Email format
+    public function email($field, $value, $message = null)
+    {
+        unset($this->errors[$field]);
+
+        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            $this->errors[$field] = $message ?? "Invalid email format.";
+        }
+    }
+
+    // Minimum length
+    public function minLength($field, $value, $min, $message = null)
+    {
+        unset($this->errors[$field]);
+
+        if (strlen($value) < $min) {
+            $this->errors[$field] = $message ?? "$field must be at least $min characters.";
+        }
+    }
+
+    // Maximum length
+    public function maxLength($field, $value, $max, $message = null)
+    {
+        unset($this->errors[$field]);
+        
+        if (strlen($value) > $max) {
+            $this->errors[$field] = $message ?? "$field cannot exceed $max characters.";
+        }
+    }
+
+    // Check if validation passed
+    public function passes()
+    {
+        return empty($this->errors);
+    }
+
+    // Get errors
+    public function getErrors()
+    {
+        return $this->errors;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+?>

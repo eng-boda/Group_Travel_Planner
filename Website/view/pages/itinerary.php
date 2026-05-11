@@ -11,7 +11,11 @@ $currentUser = $auth->getCurrentUser();
 
 $tripController = new TripController();
 $trips = $tripController->getAllTrips($currentUser->user_id);
-$active_trip_id = isset($_GET['trip_id']) ? $_GET['trip_id'] : ($trips[0]['trip_id'] ?? null);
+
+// active_trip_id: prefer GET, fall back to POST (for form submissions), then first trip
+$active_trip_id = isset($_GET['trip_id'])
+    ? (int)$_GET['trip_id']
+    : (isset($_POST['trip_id']) ? (int)$_POST['trip_id'] : ($trips[0]['trip_id'] ?? null));
 
 $activityController = new ItineraryController();
 
@@ -81,63 +85,61 @@ if (isset($_GET['edit_activity_id'])) {
 <div id="app" class="app">
   <aside class="sidebar">
     <div class="sidebar__brand"><div class="logo-mark" aria-hidden="true">✈</div><div><div class="logo-text">TripSync</div><div class="logo-sub">Collaborative Planner</div></div></div>
+
+    <!-- FIXED: interactive trip selector matching expenses.php -->
     <div class="sidebar__trip">
-    <label class="field-label">Active trip</label>
-    <div class="select select--full" style="background: #f8f9fa; border-color: #e9ecef; cursor: default; color: #495057;">
-        <?php 
-            echo isset($activeTrip) ? htmlspecialchars($activeTrip['trip_name']) : 'No Active Trip'; 
-        ?>
+      <label class="field-label">Active trip</label>
+      <select class="select select--full"
+              onchange="window.location.href='itinerary.php?trip_id=' + this.value">
+        <?php if (empty($trips)): ?>
+          <option value="">No trips yet</option>
+        <?php else: ?>
+          <?php foreach ($trips as $t): ?>
+            <option value="<?php echo (int)$t['trip_id']; ?>"
+                    <?php echo ($t['trip_id'] == $active_trip_id) ? 'selected' : ''; ?>>
+              <?php echo htmlspecialchars($t['trip_name']); ?>
+            </option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
     </div>
-    </div>
+
     <nav class="sidebar__nav" aria-label="Main navigation">
     <a href="index.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◉</span> Dashboard
     </a>
-
     <a href="members.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'members.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">👥</span> Members
     </a>
-
     <a href="itinerary.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'itinerary.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◎</span> Itinerary
     </a>
-
     <a href="voting.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'voting.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">◇</span> Voting
     </a>
-
     <a href="rsvp.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'rsvp.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">✓</span> RSVP
     </a>
-
     <a href="expenses.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'expenses.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">$</span> Expenses
     </a>
-
-    <a href="chat.php?trip_id=<?php echo $active_trip_id; ?>" 
-       class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'chat.php') ? 'is-active' : ''; ?>" 
-       style="text-decoration:none;color:inherit;">
-       <span class="nav-item__icon">💬</span> Chat
-    </a>
-
     <a href="documents.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'documents.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
        <span class="nav-item__icon">📄</span> Documents
     </a>
-
     <a href="checklist.php?trip_id=<?php echo $active_trip_id; ?>" 
        class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'checklist.php') ? 'is-active' : ''; ?>" 
        style="text-decoration:none;color:inherit;">
@@ -187,8 +189,6 @@ if (isset($_GET['edit_activity_id'])) {
     </div>
 <?php endif; ?>
 
-
-<!-- <div class="tabs"><button type="button" class="tab is-active">Board</button><button type="button" class="tab">Compact list</button></div> -->
 <h2 class="section-title" style="margin-top:2rem;">Itinerary Activities</h2>
 
 <div class="grid grid--2"> 
@@ -207,26 +207,15 @@ if (isset($_GET['edit_activity_id'])) {
                       <p class="muted" style="margin: 0;">
                           📅 <strong>Date:</strong> <?php echo date('F j, Y', strtotime($a['activity_date'])); ?>
                       </p>
-                      
                       <p class="muted" style="margin: 0;">
                           🕐 <strong>Time:</strong> <?php echo date('g:i A', strtotime($a['activity_time'])); ?>
                       </p>
-                      
                       <p class="muted" style="margin: 0;">
                           📍 <strong>Location:</strong> <?php echo htmlspecialchars($a['activity_location']); ?>
                       </p>
-
                       <p class="muted" style="margin: 0;">
                           🏷️ <strong>Type:</strong> <span class="tag"><?php echo htmlspecialchars($a['type']); ?></span>
                       </p>
-                      <div 
-    class="weather-box muted"
-    id="weather-<?php echo $a['activity_id']; ?>"
-    data-city="<?php echo htmlspecialchars($a['activity_location']); ?>"
-    data-type="<?php echo htmlspecialchars($a['type']); ?>"
->
-    Loading weather...
-</div>
                   </div>
 
                   <div style="margin-top:1rem; display:flex; gap:0.4rem;">
@@ -241,35 +230,14 @@ if (isset($_GET['edit_activity_id'])) {
                           <button type="submit" name="delete_activity" class="btn btn--sm btn--danger">Remove</button>
                       </form>
                   </div>
+
                  <form action="../../controller/RSVPController.php" method="POST"
-      style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-
-    <input type="hidden"
-           name="activity_id"
-           value="<?php echo $a['activity_id']; ?>">
-
-    <button type="submit"
-            name="response"
-            value="yes"
-            class="btn btn--sm">
-        ✅Yes
-    </button>
-
-    <button type="submit"
-            name="response"
-            value="maybe"
-            class="btn btn--sm btn--secondary">
-        🤔Maybe
-    </button>
-
-    <button type="submit"
-            name="response"
-            value="no"
-            class="btn btn--sm btn--danger">
-        ❌No
-    </button>
-
-</form>
+                       style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <input type="hidden" name="activity_id" value="<?php echo $a['activity_id']; ?>">
+                    <button type="submit" name="response" value="yes"   class="btn btn--sm">✅Yes</button>
+                    <button type="submit" name="response" value="maybe" class="btn btn--sm btn--secondary">🤔Maybe</button>
+                    <button type="submit" name="response" value="no"    class="btn btn--sm btn--danger">❌No</button>
+                </form>
 
 </div>
             <?php endforeach; ?>
@@ -278,6 +246,7 @@ if (isset($_GET['edit_activity_id'])) {
         <p class="muted">No activities found for this trip. Use the form below to add one!</p>
     <?php endif; ?>
 </div>
+
 <h2 class="section-title" style="margin-top:2rem;">Compact list view</h2>
 
 <?php 
@@ -299,7 +268,6 @@ if ($activeTrip) {
                     (<?php echo $date->format('M j'); ?>)
                 </span>
             </h3>
-            
             <ul class="list-plain">
                 <?php if (isset($grouped[$dateStr])): ?>
                     <?php foreach ($grouped[$dateStr] as $a): ?>
@@ -318,6 +286,7 @@ if ($activeTrip) {
     }
 }
 ?>
+
 <h2 class="section-title" id="activity_form"><?php echo $edit_activity ? 'Edit Activity' : 'New Activity'; ?></h2>
 
 <form method="POST" class="card">
@@ -342,8 +311,8 @@ if ($activeTrip) {
                 type="date" 
                 name="activity_date" 
                 class="input"
-                min="<?php echo $activeTrip['start_date']; ?>"
-                max="<?php echo $activeTrip['end_date']; ?>"
+                min="<?php echo $activeTrip['start_date'] ?? ''; ?>"
+                max="<?php echo $activeTrip['end_date'] ?? ''; ?>"
                 value="<?php 
                     if(isset($_POST['activity_date'])) {
                         echo $_POST['activity_date'];
@@ -373,8 +342,7 @@ if ($activeTrip) {
                 oninput="handleCountryInput(this.value)"
                 autocomplete="off"
             />
-            <datalist id="countries-list">
-                </datalist>
+            <datalist id="countries-list"></datalist>
         </div>
 
         <div class="form-row">
@@ -389,15 +357,14 @@ if ($activeTrip) {
                 required 
                 autocomplete="off"
             />
-            <datalist id="cities-list">
-                </datalist>
+            <datalist id="cities-list"></datalist>
         </div>
 
         <div class="form-row">
             <label for="a-type">Activity Type</label>
             <select id="a-type" name="type" class="input">
                 <?php $currentType = isset($_POST['type']) ? $_POST['type'] : ($edit_activity ? $edit_activity['type'] : ''); ?>
-                <option value="Indoor" <?php echo ($currentType == 'Indoor') ? 'selected' : ''; ?>>Indoor</option>
+                <option value="Indoor"  <?php echo ($currentType == 'Indoor')  ? 'selected' : ''; ?>>Indoor</option>
                 <option value="Outdoor" <?php echo ($currentType == 'Outdoor') ? 'selected' : ''; ?>>Outdoor</option>
             </select>
         </div>
@@ -407,7 +374,7 @@ if ($activeTrip) {
             <select id="a-status" name="activity_state" class="input">
                 <?php $currentState = isset($_POST['activity_state']) ? $_POST['activity_state'] : ($edit_activity ? $edit_activity['activity_state'] : 'Confirmed'); ?>
                 <option value="Confirmed" <?php echo ($currentState == 'Confirmed') ? 'selected' : ''; ?>>Confirmed</option>
-                <option value="Draft" <?php echo ($currentState == 'Draft') ? 'selected' : ''; ?>>Draft</option>
+                <option value="Draft"     <?php echo ($currentState == 'Draft')     ? 'selected' : ''; ?>>Draft</option>
             </select>
         </div>
 
@@ -443,8 +410,6 @@ async function initLocationSystem() {
             option.value = country;
             countryDataList.appendChild(option);
         });
-        
-        console.log("JSON Data Loaded for Countries & Cities!");
     } catch (error) {
         console.error("Failed to load countries.json:", error);
     }
@@ -452,11 +417,9 @@ async function initLocationSystem() {
 
 function handleCountryInput(val) {
     const cityDataList = document.getElementById('cities-list');
-    const cityInput = document.getElementById('a-loc');
     
     if (locationData[val]) {
         cityDataList.innerHTML = '';
-        
         locationData[val].sort().forEach(city => {
             const option = document.createElement('option');
             option.value = city;
@@ -468,82 +431,6 @@ function handleCountryInput(val) {
 }
 
 document.addEventListener('DOMContentLoaded', initLocationSystem);
-
-
-
-async function loadWeather() {
-    const weatherBoxes = document.querySelectorAll('.weather-box');
-    const WEATHER_API_KEY = "fdf2253c990ec46dd850df982fc6e7cd";
-
-    // دالة مساعدة لتحويل الأيقونة لإيموجي (كانت مفقودة)
-    function getWeatherEmoji(iconCode) {
-        const mapping = {
-            '01': '☀️', '02': '⛅', '03': '☁️', '04': '☁️',
-            '09': '🌧️', '10': '🌦️', '11': '⛈️', '13': '❄️', '50': '🌫️'
-        };
-        return mapping[iconCode.substring(0, 2)] || '🌡️';
-    }
-
-    for (const box of weatherBoxes) {
-        const city = box.dataset.city;
-        const current_activity_type = box.dataset.type?.toLowerCase(); // تم تعديل الاسم هنا للوضوح
-        if (!city) continue;
-
-        try {
-            const response = await fetch(
-                `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${WEATHER_API_KEY}&units=metric&lang=en`
-            );
-            const data = await response.json();
-
-            if (data.cod === 200) {
-                const temp = Math.round(data.main.temp);
-                const desc = data.weather[0].description;
-                const weatherId = data.weather[0].id;
-                const iconCode = data.weather[0].icon;
-                const emoji = getWeatherEmoji(iconCode);
-
-                box.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:0.6rem; margin-top: 0.5rem; color: #4b5563;">
-                        <span style="font-size: 1.1rem; width: 20px; text-align: center;">${emoji}</span>
-                        <span style="font-size: 0.95rem;">${temp}°C · ${desc}</span>
-                    </div>
-                `;
-
-                // تصحيح الشرط: استخدام current_activity_type بدلاً من type
-                if (current_activity_type === 'outdoor' && weatherId < 700) {
-                    showWeatherWarning(city, desc, box);
-                }
-            } else {
-                box.innerHTML = `<span style="font-size:0.8rem; color:red;">City not found</span>`;
-            }
-        } catch (error) {
-            box.innerHTML = `<span style="font-size:0.8rem; color:red;">Offline</span>`;
-        }
-    }
-}
-
-function showWeatherWarning(city, condition, element) {
-    const warningDiv = document.createElement('div');
-    warningDiv.style = `
-        background: #fff5f5;
-        border-left: 4px solid #f56565;
-        color: #c53030;
-        padding: 6px;
-        margin-top: 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-    `;
-    warningDiv.innerHTML = `⚠️ <b>Warning:</b> Bad weather for outdoor activity!`;
-    element.appendChild(warningDiv);
-}
-
-// استدعاء الدالة عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-    initLocationSystem();
-    loadWeather(); // أضف هذا السطر هنا
-});
-
-
 </script>
 
 </html>

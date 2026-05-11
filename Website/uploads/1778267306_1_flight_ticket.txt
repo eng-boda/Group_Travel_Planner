@@ -1,7 +1,0 @@
-FLIGHT TICKET
-Flight: MS-777
-From: Cairo (CAI) → Rome (FCO)
-Date: June 1, 2026 | 08:00 AM
-Seat: 14A (Window)
-Booking Ref: AIR2026XYZ
-Passenger: Ahmed Ali
