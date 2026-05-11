@@ -1,4 +1,7 @@
 <?php
+define('BASE_URL', '/Group_Travel_Planner/Website/view/');
+?>
+<?php
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
 require_once __DIR__ . '/../../controller/TripController.php';
@@ -249,6 +252,12 @@ $isOrganizer = $active_trip_id ? $roleController->isLeader($currentUser->user_id
         <?php endif; ?>
       </div>
     </header>
+    <!-- Planet -->
+  <div class="planet-container">
+    <img src="<?= BASE_URL ?>assets/images/earth-png-25608.png" class="planet">
+</div>
+
+  <div class="content">
 
     <div class="content">
 

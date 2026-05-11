@@ -204,7 +204,6 @@ body {
   width: 1.5rem;
   text-align: center;
 }
-
 .sidebar__footer {
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -1244,6 +1243,40 @@ select.input:focus {
 }
 
 /* منطقة الأنشطة */
+/* ================= PLANET ================= */
+
+.planet-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1.7rem;
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+.planet{
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+
+    animation: rotatePlanet 8s linear infinite;
+
+    filter:
+      drop-shadow(0 0 15px rgba(99,102,241,0.35))
+      drop-shadow(0 0 30px rgba(139,92,246,0.25));
+
+    transition: transform 0.3s ease;
+}
+
+.planet:hover{
+    transform: scale(1.08);
+}
+
+@keyframes rotatePlanet{
+    100%{
+        transform: rotate(360deg);
+    }
+}
 
 
 
