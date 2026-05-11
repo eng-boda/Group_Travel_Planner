@@ -1,0 +1,1 @@
+{"version":2,"defects":{"validatorTest::test_min_length_for_password_fails":8,"validatorTest::test_min_length_for_password_passes":8},"times":{"validatorTest::test_min_length_for_password_passes":0.006,"validatorTest::test_min_length_for_password_fails":0.001}}
