@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../controller/AuthController.php';
 require_once __DIR__ . '/../../model/user.php';
+require_once __DIR__ . '/../../model/expense.php';
 require_once __DIR__ . '/../../controller/TripController.php';
 require_once __DIR__ . '/../../controller/RoleController.php';
 require_once __DIR__ . '/../../controller/MemberController.php';
@@ -55,11 +56,12 @@ if ($active_trip_id) {
 }
 
 // Budget stats for active trip
+$expense = new Expense();
 $total_spent      = 0;
 $budget_limit     = 0;
 $progress_percent = 0;
 if ($activeTrip) {
-    $total_spent      = 1250; // placeholder — replace with real expense query when expenses are wired up
+    $total_spent      = $expense->getTotalSpent($active_trip_id); // placeholder — replace with real expense query when expenses are wired up
     $budget_limit     = $activeTrip['budget'];
     $progress_percent = ($budget_limit > 0) ? min(($total_spent / $budget_limit) * 100, 100) : 0;
 }
